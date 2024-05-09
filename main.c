@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h> // getopt_long
 #include <getopt.h> // struct option
+#include <signal.h>
 
 typedef struct execution_context {
     uint port;
@@ -24,7 +25,15 @@ void print_execution_context(ExecutionContext* context) {
     printf("Caminho da raiz: %s\n", context->root_path);
 }
 
+void terminate_service(int sig) {
+    printf("Service is being terminated...\n");
+    exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char *argv[]) {
+    // SIGUSR1 should terminate the service
+    signal(SIGUSR1, terminate_service);
+
     // only the port is a required argument
     char *opstring = "p:l:s:br:";
     // structure for long options. all return the identifiers for the short option.
@@ -81,12 +90,14 @@ int main(int argc, char *argv[]) {
                 printf("Finished parsing\n");
                 break;
             default:
-                printf("Usage: %s -p <port> [-l <file>] [-s <file>] [-b] [-r <path>]\n", argv[0]);
+                printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r -root <path>]\n", argv[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
     print_execution_context(&context);
+
+    while (1);
     
     return 0;
 }
