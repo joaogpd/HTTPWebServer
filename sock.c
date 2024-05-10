@@ -117,7 +117,7 @@ int main(void) {
             char data[100];
             while ((byte_count = read(new_socket_fd, data, 100)) != 0) {
                 printf("%s\n", data);
-                memset(data, 0, 100);
+                memset(data, 0, 100); // resets content on file buffer to 0
             } 
         }
     }

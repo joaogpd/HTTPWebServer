@@ -5,37 +5,71 @@
 #include <unistd.h> // getopt_long
 #include <getopt.h> // struct option
 #include <signal.h>
+#include <sys/types.h>
+
+int exit_status = EXIT_SUCCESS;
+
+#define LOG_FILE_ACCESS_MODE "a"
+#define STATS_FILE_ACCESS_MODE "w"
+#define SHOW_PROPER_PROGRAM_USAGE() printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", argv[0])
+#define GRACEFUL_EXIT(status) exit_status = status; kill(getpid(), SIGUSR1);
 
 typedef struct execution_context {
-    uint port;
-    char log_file[100];
-    char stats_file[100];
-    bool background;
-    char root_path[500];
+    char* port_number;
+    FILE* log_file;
+    FILE* stats_file;
+    bool is_background;
+    char* root_path;
 } ExecutionContext;
 
-void print_execution_context(ExecutionContext* context) {
-    if (context == NULL) {
-        printf("Error, 'context' was NULL.\n");
+ExecutionContext* global_context = NULL;
+
+void free_execution_context(void) {
+    if (global_context != NULL) {
+        // can free NULL pointers with no side effects
+        free(global_context->port_number);
+        free(global_context->root_path);
+
+        // should not close NULL file pointers, causes undefined behaviour (at best)
+        if (global_context->log_file != NULL) fclose(global_context->log_file);
+        if (global_context->stats_file != NULL) fclose(global_context->stats_file);
+
+        free(global_context);
     }
-    printf("Porta: %d\n", context->port);
-    printf("Arquivo de log: %s\n", context->log_file);
-    printf("Arquivo de estatísticas: %s\n", context->stats_file);
-    printf("Background: %d\n", context->background);
-    printf("Caminho da raiz: %s\n", context->root_path);
 }
 
 void terminate_service(int sig) {
     printf("Service is being terminated...\n");
-    exit(EXIT_SUCCESS);
+
+    free_execution_context();
+    
+    exit(exit_status);
 }
 
-int main(int argc, char *argv[]) {
-    // SIGUSR1 should terminate the service
-    signal(SIGUSR1, terminate_service);
+FILE* open_file(char* filename, char* mode) {
+    if (filename == NULL || mode == NULL) {
+        fprintf(stderr, "Fatal error, cannot open file with NULL arguments\n");
+        GRACEFUL_EXIT(EXIT_FAILURE);
+    }
+    FILE* file = fopen(filename, mode);
+    if (file == NULL) {
+        fprintf(stderr, "Fatal error, FILE* opened was NULL\n");
+        GRACEFUL_EXIT(EXIT_FAILURE);
+    }
+    return file;
+}
 
-    // only the port is a required argument
-    char *opstring = "p:l:s:br:";
+void parse_arguments_into_global_context(int argc, char *argv[]) {
+    if (argc <= 1) {
+        SHOW_PROPER_PROGRAM_USAGE();
+        GRACEFUL_EXIT(EXIT_FAILURE);
+    }
+
+    // using 'calloc' so everything starts zeroed
+    global_context = (ExecutionContext*)calloc(1, sizeof(ExecutionContext)); 
+
+    char* optstring = "p:l:s:br:"; // only background has no argument (and others are all required)
+
     // structure for long options. all return the identifiers for the short option.
     struct option longopts[] = {
         { "port", required_argument, NULL, 'p' },
@@ -45,59 +79,61 @@ int main(int argc, char *argv[]) {
         { "root", required_argument, NULL, 'r' }
     };
 
-    ExecutionContext context = {0};
-
-    if (argc <= 1) {
-        printf("Usage: %s -p <port> [-l <file>] [-s <file>] [-b] [-r <path>]\n", argv[0]);
-    }
-    
     char option = (char)-1;
-    while ((option = getopt_long(argc, argv, opstring, longopts, NULL)) != -1) {
+    while ((option = getopt_long(argc, argv, optstring, longopts, NULL)) != -1) {
         switch (option) {
             case 'p':
-                printf("Port\n");
-                // handle non numeric argument
-                context.port = atoi(optarg);
-                if (context.port == 0) {
-                    fprintf(stderr, "Error, 'port' argument was not numeric value\n");
-                    exit(EXIT_FAILURE);
+                global_context->port_number = (char*)malloc(sizeof(char) * (strlen(optarg) + 1));
+                strcpy(global_context->port_number, optarg);
+                printf("Port: %s\n", global_context->port_number);
+                if (atoi(optarg) == 0) { // check whether port is a number
+                    fprintf(stderr, "Fatal error, 'port' argument is not a numeric value\n");
+                    GRACEFUL_EXIT(EXIT_FAILURE);
                 }
                 break;
             case 'l':
-                printf("Log\n");
-                strcpy(context.log_file, optarg);
+                global_context->log_file = open_file(optarg, LOG_FILE_ACCESS_MODE);
+                printf("Log file: %s\n", optarg);
                 break;
             case 's':
-                printf("Statistics\n");
-                strcpy(context.stats_file, optarg);
+                global_context->stats_file = open_file(optarg, STATS_FILE_ACCESS_MODE);
+                printf("Stats file: %s\n", optarg);
                 break;
             case 'b':
                 printf("Background\n");
-                context.background = true;
+                global_context->is_background = true;
                 break;
             case 'r':
-                printf("Root\n");
-                strcpy(context.root_path, optarg);
+                global_context->root_path = (char*)malloc(sizeof(char) * (strlen(optarg) + 1));
+                strcpy(global_context->root_path, optarg);
+                printf("Root path: %s\n", global_context->root_path);
                 break;
             case '?':
-                printf("Usage: %s -p <port> [-l <file>] [-s <file>] [-b] [-r <path>]\n", argv[0]);
-                exit(EXIT_FAILURE);
+                SHOW_PROPER_PROGRAM_USAGE();
+                GRACEFUL_EXIT(EXIT_FAILURE);
             case ':':
-                printf("Usage: %s -p <port> [-l <file>] [-s <file>] [-b] [-r <path>]\n", argv[0]);
-                exit(EXIT_FAILURE);
-            case (char)-1:
-                // finished parsing
-                printf("Finished parsing\n");
-                break;
+                SHOW_PROPER_PROGRAM_USAGE();
+                GRACEFUL_EXIT(EXIT_FAILURE);
             default:
-                printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r -root <path>]\n", argv[0]);
-                exit(EXIT_FAILURE);
+                SHOW_PROPER_PROGRAM_USAGE();
+                GRACEFUL_EXIT(EXIT_FAILURE);
         }
     }
 
-    print_execution_context(&context);
+    if (optind <= 1) {
+        SHOW_PROPER_PROGRAM_USAGE();
+        GRACEFUL_EXIT(EXIT_FAILURE);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // SIGUSR1 should terminate the service
+    signal(SIGUSR1, terminate_service);
+    signal(SIGINT, terminate_service);
+
+    parse_arguments_into_global_context(argc, argv);
 
     while (1);
-    
+
     return 0;
 }
