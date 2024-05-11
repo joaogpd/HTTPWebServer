@@ -1,14 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <string.h>
-#include <signal.h>
+#include "sock.h"
 
-int socket_fd_temp;
+int global_socket_fd = -1;
 
 typedef union {
     struct sockaddr_in client_ipv4;
@@ -91,20 +83,29 @@ int accept_connection(int sockfd) {
     return accept_fd;
 }
 
-void terminate_server(int signal) {
-    if (close(socket_fd_temp) != 0) {
-        printf("Error, couldn't close socket\n");
-        exit(EXIT_SUCCESS);
+void close_server_socket(void) {
+    if (global_socket_fd != -1) {
+        if (close(global_socket_fd) != 0) {
+            fprintf(stderr, "Fatal error, couldn't close socket\n");
+        }
     }
-    exit(EXIT_SUCCESS);
+}
+
+void terminate_service(int sig) {
+    printf("Service is being terminated...\n");
+
+    close_server_socket();
+    
+    exit(exit_status);
 }
 
 int main(void) {
-    signal(SIGINT, terminate_server);
+    signal(SIGUSR1, terminate_service);
+
     struct addrinfo* addr = get_addr("8080", AF_INET);
 
     int socket_fd = create_tcp_socket(addr);
-    socket_fd_temp = socket_fd;
+    global_socket_fd = socket_fd;
     assign_name_socket(socket_fd, addr);
     listen_on_socket(socket_fd);
 
@@ -120,12 +121,16 @@ int main(void) {
                 memset(data, 0, 100); // resets content on file buffer to 0
             } 
         }
+        if (close(new_socket_fd) != 0) {
+            fprintf(stderr, "Fatal error, couldn't open 'accept' socket\n");
+            graceful_exit(EXIT_FAILURE);
+        }
     }
 
     if (close(socket_fd) != 0) {
-        printf("Error, couldn't close socket\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Fatal error, couldn't close socket\n");
+        graceful_exit(EXIT_FAILURE);
     }
 
-    return 0;
+    graceful_exit(EXIT_SUCCESS);
 }

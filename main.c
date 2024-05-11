@@ -6,13 +6,14 @@
 #include <getopt.h> // struct option
 #include <signal.h>
 #include <sys/types.h>
+#include "sock.h"
+#include "graceful_exit.h"
 
 int exit_status = EXIT_SUCCESS;
 
 #define LOG_FILE_ACCESS_MODE "a"
 #define STATS_FILE_ACCESS_MODE "w"
 #define SHOW_PROPER_PROGRAM_USAGE() printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", argv[0])
-#define GRACEFUL_EXIT(status) exit_status = status; kill(getpid(), SIGUSR1);
 
 typedef struct execution_context {
     char* port_number;
@@ -49,12 +50,12 @@ void terminate_service(int sig) {
 FILE* open_file(char* filename, char* mode) {
     if (filename == NULL || mode == NULL) {
         fprintf(stderr, "Fatal error, cannot open file with NULL arguments\n");
-        GRACEFUL_EXIT(EXIT_FAILURE);
+        graceful_exit(EXIT_FAILURE);
     }
     FILE* file = fopen(filename, mode);
     if (file == NULL) {
         fprintf(stderr, "Fatal error, FILE* opened was NULL\n");
-        GRACEFUL_EXIT(EXIT_FAILURE);
+        graceful_exit(EXIT_FAILURE);
     }
     return file;
 }
@@ -62,7 +63,7 @@ FILE* open_file(char* filename, char* mode) {
 void parse_arguments_into_global_context(int argc, char *argv[]) {
     if (argc <= 1) {
         SHOW_PROPER_PROGRAM_USAGE();
-        GRACEFUL_EXIT(EXIT_FAILURE);
+        graceful_exit(EXIT_FAILURE);
     }
 
     // using 'calloc' so everything starts zeroed
@@ -88,7 +89,7 @@ void parse_arguments_into_global_context(int argc, char *argv[]) {
                 printf("Port: %s\n", global_context->port_number);
                 if (atoi(optarg) == 0) { // check whether port is a number
                     fprintf(stderr, "Fatal error, 'port' argument is not a numeric value\n");
-                    GRACEFUL_EXIT(EXIT_FAILURE);
+                    graceful_exit(EXIT_FAILURE);
                 }
                 break;
             case 'l':
@@ -110,19 +111,19 @@ void parse_arguments_into_global_context(int argc, char *argv[]) {
                 break;
             case '?':
                 SHOW_PROPER_PROGRAM_USAGE();
-                GRACEFUL_EXIT(EXIT_FAILURE);
+                graceful_exit(EXIT_FAILURE);
             case ':':
                 SHOW_PROPER_PROGRAM_USAGE();
-                GRACEFUL_EXIT(EXIT_FAILURE);
+                graceful_exit(EXIT_FAILURE);
             default:
                 SHOW_PROPER_PROGRAM_USAGE();
-                GRACEFUL_EXIT(EXIT_FAILURE);
+                graceful_exit(EXIT_FAILURE);
         }
     }
 
     if (optind <= 1) {
         SHOW_PROPER_PROGRAM_USAGE();
-        GRACEFUL_EXIT(EXIT_FAILURE);
+        graceful_exit(EXIT_FAILURE);
     }
 }
 
@@ -135,5 +136,5 @@ int main(int argc, char *argv[]) {
 
     while (1);
 
-    return 0;
+    graceful_exit(EXIT_SUCCESS);
 }
