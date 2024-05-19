@@ -6,11 +6,15 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
 #define DEBUG
 #define MAXPORT 6 // max port value is 65535
+#define LISTEN_BACKLOG 100
+#define MAX_MSG_SIZE 1024
 
 struct host {
     char address[NI_MAXHOST];

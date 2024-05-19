@@ -51,6 +51,7 @@ int bind_socket(int sockfd, struct sockaddr_storage *addr) {
     socklen_t sockaddr_len = (addr->ss_family == AF_INET) 
         ? sizeof(struct sockaddr_in) 
         : sizeof(struct sockaddr_in6);
+
     int error = bind(sockfd, (struct sockaddr*)addr, sockaddr_len);
 
     if (error == -1) {
@@ -83,6 +84,7 @@ struct sockaddr* getsockaddr_from_host(struct host* host) {
     // AI_PASSIVE will return a socket address suitable for binding if address is NULL
     // AI_ADDRCONFIG will only return IPv4 or IPv6 addresses if there's at least one configured
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE | AI_ADDRCONFIG; 
+
     int error = getaddrinfo(host->address, host->port, &hints, &response);
 
     if (error != 0) {
@@ -103,3 +105,51 @@ struct sockaddr* getsockaddr_from_host(struct host* host) {
 
     return response->ai_addr;
 }
+
+int listen_on_socket(int sockfd) {
+    if (sockfd == -1) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: socket descriptor is invalid\n");
+#endif
+        return -1;
+    }
+
+    int error = listen(sockfd, LISTEN_BACKLOG);
+
+    if (error != 0) {
+#ifdef DEBUG
+        fprintf(stderr, 
+            "ERROR: couldn't start listening on socket. Erorr: %s\n",
+            strerror(errno));
+#endif
+        return -1;
+    }
+
+    return 0;
+}
+
+int accept_conn_socket(int sockfd) {
+    if (sockfd == -1) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: socket descriptor is invalid\n");
+#endif
+        return -1;
+    }
+
+    struct sockaddr addr = {0};
+    socklen_t addrlen = 0;
+
+    int new_sockfd = accept(sockfd, &addr, &addrlen);
+
+    char data[MAX_MSG_SIZE];
+
+    int byte_count = 0;
+    while (!((byte_count = read(new_sockfd, data, MAX_MSG_SIZE)) == 0)) {
+#ifdef DEBUG
+        printf("Got message of size %d bytes from %s:%s: %s", byte_count, addr_in.sin_addr, addr_in.sin_port, data);
+#endif
+    }
+
+    return 0;
+}
+
