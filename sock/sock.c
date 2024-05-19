@@ -2,6 +2,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <sys/select.h>
 
 int create_TCP_socket(int domain) {
     if (domain != AF_INET && domain != AF_INET6) {
@@ -128,6 +129,33 @@ int listen_on_socket(int sockfd) {
     return 0;
 }
 
+int select_read_socket(int nreadfds, int *readfds) {
+    fd_set fd_set_readfds;
+
+    FD_ZERO(&fd_set_readfds);
+
+    for (int i = 0; i < nreadfds; i++) {
+        FD_SET(readfds[i], &fd_set_readfds);
+    }
+
+    int max_fds = nreadfds + 1;
+
+    int error = select(max_fds, &fd_set_readfds, NULL, NULL, NULL);
+
+    if (error == -1) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: couldn't wait on select on sockets. Error: %s\n", strerror(errno));
+#endif
+        return -1;
+    }
+
+    for (int i = 0; i < nreadfds; i++) {
+        // spawn a thread for every available for reading file descriptor
+    }
+
+    return 0;
+}
+
 int accept_conn_socket(int sockfd) {
     if (sockfd == -1) {
 #ifdef DEBUG
@@ -141,12 +169,16 @@ int accept_conn_socket(int sockfd) {
 
     int new_sockfd = accept(sockfd, &addr, &addrlen);
 
+    char hostname[NI_MAXHOST], servname[NI_MAXSERV];
     char data[MAX_MSG_SIZE];
+
+    getnameinfo(&addr, addrlen, hostname, sizeof hostname, 
+        servname, sizeof servname, NI_NUMERICHOST | NI_NUMERICSERV);
 
     int byte_count = 0;
     while (!((byte_count = read(new_sockfd, data, MAX_MSG_SIZE)) == 0)) {
 #ifdef DEBUG
-        printf("Got message of size %d bytes from %s:%s: %s", byte_count, addr_in.sin_addr, addr_in.sin_port, data);
+        printf("Got message of size %d bytes from %s:%s: %s", byte_count, hostname, servname, data);
 #endif
     }
 
