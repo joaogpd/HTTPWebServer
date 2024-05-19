@@ -11,4 +11,4 @@ object:
 
 clean:
 	rm *.o
-	rm *.out
+	# rm *.out

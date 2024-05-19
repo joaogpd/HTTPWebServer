@@ -36,6 +36,8 @@ int connect_socket(int sockfd, struct sockaddr_storage *addr) {
     }
 
     // TODO
+
+    return 0;
 }
 
 int bind_socket(int sockfd, struct sockaddr_storage *addr) {
@@ -59,9 +61,11 @@ int bind_socket(int sockfd, struct sockaddr_storage *addr) {
 #endif
         return -1;
     }
+
+    return 0;
 }
 
-struct addrinfo* getsockaddr_from_host(struct host* host) {
+struct sockaddr* getsockaddr_from_host(struct host* host) {
     if (host == NULL) {
 #ifdef DEBUG
         fprintf(stderr, "ERROR: host argument was NULL.\n");
@@ -83,15 +87,19 @@ struct addrinfo* getsockaddr_from_host(struct host* host) {
 
     if (error != 0) {
 #ifdef DEBUG
-        fprintf(stderr, 
-            "ERROR: couldn't get socket address from host. 'getaddrinfo' error: %s.\n", 
-            gai_strerror(error));
         if (error == EAI_SYSTEM) {
-            fprintf(stderr, "Error: %s\n", strerror(errno));
+            fprintf(stderr, 
+            "ERROR: couldn't get socket address from host. 'gai' error: %s. Error: %s\n", 
+                    gai_strerror(error),
+                    strerror(errno));
+        } else {
+            fprintf(stderr, 
+            "ERROR: couldn't get socket address from host. 'getaddrinfo' error: %s.", 
+                    gai_strerror(error));
         }
 #endif
         return NULL;
     }
 
-    return response;
+    return response->ai_addr;
 }
