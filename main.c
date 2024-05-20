@@ -17,7 +17,7 @@ void terminate(int sig) {
 int main(void) {
     signal(SIGINT, terminate);
 
-    sockfd = create_TCP_socket(AF_INET);
+    sockfd = create_TCP_socket(AF_INET6);
 
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
 
@@ -34,7 +34,7 @@ int main(void) {
     freeaddrinfo(addrinfo);
 
     if (error != 0) {
-        close(sockfd);
+        close_socket(sockfd, 10);
         return EXIT_FAILURE;
     }
 

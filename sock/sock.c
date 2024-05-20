@@ -6,9 +6,9 @@
 
 int create_TCP_socket(int domain) {
     if (domain != AF_INET && domain != AF_INET6) {
-        #ifdef DEBUG
+#ifdef DEBUG
 	    fprintf(stderr, "ERROR: domain not supported\n");
-        #endif
+#endif
 	    return -1;
     }
 
@@ -16,11 +16,11 @@ int create_TCP_socket(int domain) {
     int sock_fd = socket(domain, SOCK_STREAM, IPPROTO_TCP);
 
     if (sock_fd == -1) {
-        #ifdef DEBUG
+#ifdef DEBUG
 	    fprintf(stderr, 
             "ERROR: socket could not be opened. Error: %s\n",
             strerror(errno));
-        #endif
+#endif
     }
 
     return sock_fd;
@@ -30,9 +30,9 @@ int create_TCP_socket(int domain) {
 
 int connect_socket(int sockfd, struct sockaddr_storage *addr) {
     if (sockfd == -1) {
-        #ifdef DEBUG
+#ifdef DEBUG
         fprintf(stderr, "ERROR: socket descriptor is invalid\n");
-        #endif
+#endif
         return -1;
     }
 
