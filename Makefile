@@ -1,11 +1,11 @@
 sock: sock/sock.c
-	gcc -Wall -c sock.o sock/sock.c
+	gcc -Wall -g -c sock.o sock/sock.c
 
 arena: arena/arena.c
-	gcc -Wall -c arena.o arena/arena.c
+	gcc -Wall -g -c arena.o arena/arena.c
 
 thread_pool: thread_pool/thread_pool.c
-	gcc -Wall -c thread_pool.o thread_pool/thread_pool.c
+	gcc -Wall -g -c thread_pool.o thread_pool/thread_pool.c
 
 object: 
 	make sock

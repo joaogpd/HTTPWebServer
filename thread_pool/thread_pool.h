@@ -16,6 +16,9 @@ struct thread_queue_node {
     pthread_t id;
     pthread_cond_t cond;
     pthread_mutex_t mutex;
+    pthread_mutex_t terminate_mutex;
+    bool removed;
+    bool terminate;
     void* arg;
     struct thread_queue_node* next;
 };

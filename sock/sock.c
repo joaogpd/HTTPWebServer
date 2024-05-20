@@ -125,7 +125,7 @@ int listen_on_socket(int sockfd) {
     if (error != 0) {
 #ifdef DEBUG
         fprintf(stderr, 
-            "ERROR: couldn't start listening on socket. Erorr: %s\n",
+            "ERROR: couldn't start listening on socket. Error: %s\n",
             strerror(errno));
 #endif
         return -1;
@@ -219,6 +219,7 @@ void* thread_read_socket(void* sockfd) {
 #ifdef DEBUG
         printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
 #endif
+        memset(data, 0, sizeof(data));
     }
 
     return NULL;
@@ -251,8 +252,13 @@ int thread_pool_accept_conn_socket(int sockfd) {
 
         if (new_sockfd == -1) {
 #ifdef DEBUG
-            fprintf(stderr, "ERROR: invalid socket descriptor from accept\n");
+            fprintf(stderr, 
+                "ERROR: invalid socket descriptor from accept. Error %s\n", 
+                strerror(errno));
 #endif
+            if (errno == EBADF) {
+                return -1;
+            }
             continue;
         }
 

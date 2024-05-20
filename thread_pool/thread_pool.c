@@ -9,6 +9,10 @@ pthread_mutex_t arena_id_mutex = PTHREAD_MUTEX_INITIALIZER;
 arena_t arena_id;
 
 static void insert_new_thread(struct thread_queue_node* node) {
+    if (!node->removed) {
+        return;
+    }
+    node->removed = false;
     if (thread_pool->first == NULL) {
         thread_pool->first = thread_pool->last = node;
     } else {
@@ -27,6 +31,7 @@ static struct thread_queue_node* remove_first_thread(void) {
     }
 
     thread->next = NULL;
+    thread->removed = true;
 
     return thread;
 }
@@ -41,13 +46,19 @@ static void* new_thread_wait(void* arg) {
     while (1) {
         pthread_mutex_lock(&(thread->mutex));
         pthread_cond_wait(&(thread->cond), &(thread->mutex));
-        pthread_testcancel(); 
-        // mutex will never be unlocked, but thread has been canceled so doesn't matter
+        pthread_mutex_lock(&(thread->terminate_mutex));
+        if (thread->terminate) {
+            pthread_exit(NULL);
+        }
+        pthread_mutex_unlock(&(thread->terminate_mutex));
         pthread_mutex_unlock(&(thread->mutex));
 
         if (thread->task != NULL) {
             thread->task(thread->arg);
         }
+
+        thread->task = NULL;
+        thread->arg = NULL;
 
         return_thread_to_pool(thread);
     }
@@ -68,8 +79,11 @@ void teardown_thread_pool(void) {
     struct thread_queue_node* thread = thread_pool->first;
 
     while (thread != NULL) {
-        pthread_cancel(thread->id);
         pthread_cond_signal(&(thread->cond));
+        pthread_mutex_lock(&(thread->terminate_mutex));
+        thread->terminate = true;
+        pthread_mutex_unlock(&(thread->terminate_mutex));
+        pthread_join(thread->id, NULL);
 
         thread = thread->next;
     }
@@ -144,7 +158,17 @@ int spawn_thread_pool(int nthreads) {
         error = pthread_mutex_init(&(new_node->mutex), NULL);
         if (error != 0) {
 #ifdef DEBUG
-            fprintf(stderr, "ERROR: couldn't initialize pthread_mutex. Error: %s\n", strerror(errno));
+            fprintf(stderr, "ERROR: couldn't initialize thread mutex. Error: %s\n", strerror(errno));
+#endif
+            pthread_mutex_unlock(&thread_pool_mutex);
+            teardown_thread_pool(); // teardown any already created threads
+            return -1;
+        }
+
+        error = pthread_mutex_init(&(new_node->terminate_mutex), NULL);
+        if (error != 0) {
+#ifdef DEBUG
+            fprintf(stderr, "ERROR: couldn't initialize thread terminate mutex. Error: %s\n", strerror(errno));
 #endif
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
@@ -153,6 +177,8 @@ int spawn_thread_pool(int nthreads) {
 
         new_node->next = NULL;
         new_node->task = NULL;
+        new_node->terminate = false;
+        new_node->removed = true;
 
         error = pthread_create(&(new_node->id), NULL, new_thread_wait, (void*)new_node);
         if (error != 0) {

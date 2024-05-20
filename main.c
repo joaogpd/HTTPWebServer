@@ -1,20 +1,27 @@
 #include "sock/sock.h"
-#include <asm-generic/socket.h>
+#include "thread_pool/thread_pool.h"
 #include <netdb.h>
 #include <stdlib.h>
 #include <signal.h>
 
 #define PORT "8221"
 
+int sockfd = -1;
+
 void close_socket(int sockfd) {
     close(sockfd);
-    exit(EXIT_SUCCESS);
+}
+
+void terminate(int sig) {
+    // close_socket(sockfd);
+    teardown_thread_pool();
+    _exit(EXIT_SUCCESS);
 }
 
 int main(void) {
-    signal(SIGINT, close_socket);
+    signal(SIGINT, terminate);
 
-    int sockfd = create_TCP_socket(AF_INET);
+    sockfd = create_TCP_socket(AF_INET);
 
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
 
