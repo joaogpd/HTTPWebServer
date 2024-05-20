@@ -48,6 +48,8 @@ static void* new_thread_wait(void* arg) {
         pthread_cond_wait(&(thread->cond), &(thread->mutex));
         pthread_mutex_lock(&(thread->terminate_mutex));
         if (thread->terminate) {
+            pthread_mutex_unlock(&(thread->terminate_mutex));
+            pthread_mutex_unlock(&(thread->mutex));
             pthread_exit(NULL);
         }
         pthread_mutex_unlock(&(thread->terminate_mutex));
@@ -79,10 +81,12 @@ void teardown_thread_pool(void) {
     struct thread_queue_node* thread = thread_pool->first;
 
     while (thread != NULL) {
-        pthread_cond_signal(&(thread->cond));
         pthread_mutex_lock(&(thread->terminate_mutex));
         thread->terminate = true;
         pthread_mutex_unlock(&(thread->terminate_mutex));
+        pthread_mutex_lock(&(thread->mutex));
+        pthread_cond_signal(&(thread->cond));
+        pthread_mutex_unlock(&(thread->mutex));
         pthread_join(thread->id, NULL);
 
         thread = thread->next;
@@ -224,7 +228,9 @@ int request_thread_from_pool(thread_task_t task, void* arg) {
     thread->arg = arg;
     thread->task = task;
 
+    pthread_mutex_lock(&(thread->mutex));
     pthread_cond_signal(&(thread->cond));
+    pthread_mutex_unlock(&(thread->mutex));
 
     pthread_mutex_unlock(&thread_pool_mutex);
 

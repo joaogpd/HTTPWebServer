@@ -4,16 +4,12 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define PORT "8221"
+#define PORT "8223"
 
 int sockfd = -1;
 
-void close_socket(int sockfd) {
-    close(sockfd);
-}
-
 void terminate(int sig) {
-    // close_socket(sockfd);
+    close_socket(sockfd, 10);
     teardown_thread_pool();
     _exit(EXIT_SUCCESS);
 }

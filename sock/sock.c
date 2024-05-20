@@ -144,11 +144,31 @@ static void* thread_accept_conn_socket(void* sockfd) {
 
     accept_conn_socket(*((int*)sockfd));
 
-    // TODO: check for error
-    close(*(int*)sockfd); 
-    free(sockfd);
+    if (close_socket(*((int*)sockfd), 10) != 0) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: couldn't close socket fd\n");
+#endif
+    }
 
     return NULL;
+}
+
+int close_socket(int sockfd, int maxtries) {
+    int error = 0;
+    int counter = 0;
+    while ((error = close(sockfd)) != 0) {
+#ifdef DEBUG
+        fprintf(stderr,
+         "ERROR: couldn't close socket. Error: %s\n", 
+         strerror(errno));
+#endif
+        counter++;
+        if (counter >= maxtries) {
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 int select_read_socket(int nreadfds, int *readfds) {
@@ -201,8 +221,8 @@ int select_read_socket(int nreadfds, int *readfds) {
 }
 
 void* thread_read_socket(void* sockfd) {
-    char hostname[NI_MAXHOST], servname[NI_MAXSERV];
-    char data[MAX_MSG_SIZE];
+    char hostname[NI_MAXHOST] = {0}, servname[NI_MAXSERV] = {0};
+    char data[MAX_MSG_SIZE] = {0};
 
     struct sockaddr addr = {0};
     socklen_t addrlen = sizeof(struct sockaddr);
@@ -256,7 +276,7 @@ int thread_pool_accept_conn_socket(int sockfd) {
                 "ERROR: invalid socket descriptor from accept. Error %s\n", 
                 strerror(errno));
 #endif
-            if (errno == EBADF) {
+            if (errno == EBADF) { // connection was probably torn down
                 return -1;
             }
             continue;
@@ -264,9 +284,7 @@ int thread_pool_accept_conn_socket(int sockfd) {
 
         int error = 0;
         int timeout_counter = 0;
-        int* new_sockfd_copy = (int*)malloc(sizeof(int));
-        *new_sockfd_copy = new_sockfd;
-        while ((error = request_thread_from_pool(thread_read_socket, (void*)new_sockfd_copy)) != 0) {
+        while ((error = request_thread_from_pool(thread_read_socket, (void*)&new_sockfd)) != 0) {
 #ifdef DEBUG
             printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
 #endif

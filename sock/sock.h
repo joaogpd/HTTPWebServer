@@ -43,6 +43,8 @@ int create_TCP_socket(int domain);
   */
 int connect_socket(int sockfd, struct sockaddr_storage *addr);
 
+int close_socket(int sockfd, int maxtries);
+
 int bind_socket(int sockfd, struct sockaddr_storage *addr);
 
 struct addrinfo* getsockaddr_from_host(struct host* host);
