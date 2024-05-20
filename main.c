@@ -1,8 +1,10 @@
 #include "sock/sock.h"
+#include <asm-generic/socket.h>
+#include <netdb.h>
 #include <stdlib.h>
 #include <signal.h>
 
-#define PORT "8214"
+#define PORT "8221"
 
 void close_socket(int sockfd) {
     close(sockfd);
@@ -14,17 +16,28 @@ int main(void) {
 
     int sockfd = create_TCP_socket(AF_INET);
 
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
+
     struct host host;
     strcpy(host.address, "");
-    strcpy(host.port, "8214");
+    strcpy(host.port, PORT);
+    host.domain = AF_INET;
 
-    struct sockaddr* sockaddr = getsockaddr_from_host(&host);
+    struct addrinfo* addrinfo = getsockaddr_from_host(&host);
+    struct sockaddr* sockaddr = addrinfo->ai_addr;
 
-    bind_socket(sockfd, (struct sockaddr_storage*)sockaddr);
+    int error = bind_socket(sockfd, (struct sockaddr_storage*)sockaddr);
+
+    freeaddrinfo(addrinfo);
+
+    if (error != 0) {
+        close(sockfd);
+        return EXIT_FAILURE;
+    }
 
     listen_on_socket(sockfd);
 
-    select_read_socket(1, &sockfd);
+    thread_pool_accept_conn_socket(sockfd);
 
     while (1);
 

@@ -45,12 +45,14 @@ int connect_socket(int sockfd, struct sockaddr_storage *addr);
 
 int bind_socket(int sockfd, struct sockaddr_storage *addr);
 
-struct sockaddr* getsockaddr_from_host(struct host* host);
+struct addrinfo* getsockaddr_from_host(struct host* host);
 
 int listen_on_socket(int sockfd);
 
 int select_read_socket(int nreadfds, int *readfds);
 
 int accept_conn_socket(int sockfd);
+
+int thread_pool_accept_conn_socket(int sockfd);
 
 #endif

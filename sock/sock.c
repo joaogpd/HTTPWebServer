@@ -67,7 +67,7 @@ int bind_socket(int sockfd, struct sockaddr_storage *addr) {
     return 0;
 }
 
-struct sockaddr* getsockaddr_from_host(struct host* host) {
+struct addrinfo* getsockaddr_from_host(struct host* host) {
     if (host == NULL) {
 #ifdef DEBUG
         fprintf(stderr, "ERROR: host argument was NULL.\n");
@@ -76,7 +76,7 @@ struct sockaddr* getsockaddr_from_host(struct host* host) {
     }
 
     struct addrinfo hints = {0};
-    struct addrinfo* response;
+    struct addrinfo* response = NULL;
     hints.ai_family = host->domain;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
@@ -109,7 +109,7 @@ struct sockaddr* getsockaddr_from_host(struct host* host) {
         return NULL;
     }
 
-    return response->ai_addr;
+    return response;
 }
 
 int listen_on_socket(int sockfd) {
@@ -144,6 +144,10 @@ static void* thread_accept_conn_socket(void* sockfd) {
 
     accept_conn_socket(*((int*)sockfd));
 
+    // TODO: check for error
+    close(*(int*)sockfd); 
+    free(sockfd);
+
     return NULL;
 }
 
@@ -158,7 +162,9 @@ int select_read_socket(int nreadfds, int *readfds) {
 
     int max_fds = nreadfds + 1;
 
+    printf("I am waiting on select\n");
     int error = select(max_fds, &fd_set_readfds, NULL, NULL, NULL);
+    printf("I got past select\n");
 
     if (error == -1) {
 #ifdef DEBUG
@@ -194,6 +200,86 @@ int select_read_socket(int nreadfds, int *readfds) {
     return 0;
 }
 
+void* thread_read_socket(void* sockfd) {
+    char hostname[NI_MAXHOST], servname[NI_MAXSERV];
+    char data[MAX_MSG_SIZE];
+
+    struct sockaddr addr = {0};
+    socklen_t addrlen = sizeof(struct sockaddr);
+
+    // TODO: check for errors
+    getpeername(*((int*)sockfd), &addr, &addrlen); 
+
+    // TODO: check for errors
+    getnameinfo(&addr, addrlen, hostname, sizeof hostname, 
+        servname, sizeof servname, NI_NUMERICHOST | NI_NUMERICSERV);
+
+    int byte_count = 0;
+    while (!((byte_count = read(*((int*)sockfd), data, MAX_MSG_SIZE)) <= 0)) {
+#ifdef DEBUG
+        printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
+#endif
+    }
+
+    return NULL;
+}
+
+int thread_pool_accept_conn_socket(int sockfd) {
+    if (sockfd == -1) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: socket descriptor is invalid\n");
+#endif
+        return -1;
+    }
+
+    struct sockaddr addr = {0};
+    socklen_t addrlen = 0;
+
+    if (!is_thread_pool_spawned()) {
+        int error = spawn_thread_pool(MAX_SOCK_THREADS);
+        if (error != 0) {
+#ifdef DEBUG
+            fprintf(stderr, "ERROR: couldn't spawn thread pool\n");
+#endif
+            return -1;
+        }
+    }
+
+    while (1) {
+        // printf("I am on accept\n");
+        int new_sockfd = accept(sockfd, &addr, &addrlen);
+
+        if (new_sockfd == -1) {
+#ifdef DEBUG
+            fprintf(stderr, "ERROR: invalid socket descriptor from accept\n");
+#endif
+            continue;
+        }
+
+        int error = 0;
+        int timeout_counter = 0;
+        int* new_sockfd_copy = (int*)malloc(sizeof(int));
+        *new_sockfd_copy = new_sockfd;
+        while ((error = request_thread_from_pool(thread_read_socket, (void*)new_sockfd_copy)) != 0) {
+#ifdef DEBUG
+            printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
+#endif
+            usleep(THREAD_TIMEOUT_TIMER);
+            timeout_counter++;
+            if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
+#ifdef DEBUG
+                printf(
+                    "ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", 
+                    THREAD_TIMEOUT_COUNTER);
+#endif
+                break;
+            }
+        }
+    }
+
+    return 0;
+}
+
 int accept_conn_socket(int sockfd) {
     if (sockfd == -1) {
 #ifdef DEBUG
@@ -205,6 +291,7 @@ int accept_conn_socket(int sockfd) {
     struct sockaddr addr = {0};
     socklen_t addrlen = 0;
 
+    printf("I am on accept\n");
     int new_sockfd = accept(sockfd, &addr, &addrlen);
 
     char hostname[NI_MAXHOST], servname[NI_MAXSERV];

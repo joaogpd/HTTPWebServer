@@ -17,6 +17,24 @@ main:
 	gcc -Wall -o main.out main.c *.o
 	./main.out
 	make clean
+	
+gdb:
+	make object
+	gcc -Wall -g -o main.out main.c *.o
+	gdb main.out
+	make clean
+
+valgrind:
+	make object
+	gcc -Wall -g -o main.out main.c *.o
+	valgrind -s --leak-check=full --show-leak-kinds=all --track-origins=yes ./main.out
+	make clean
+
+helgrind:
+	make object
+	gcc -Wall -g -o main.out main.c *.o
+	valgrind -s --tool=helgrind ./main.out
+	make clean
 
 clean:
 	rm *.o
