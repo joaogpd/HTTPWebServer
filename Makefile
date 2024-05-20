@@ -11,8 +11,13 @@ object:
 	make sock
 	make arena
 	make thread_pool
+
+main:
+	make object
+	gcc -Wall -o main.out main.c *.o
+	./main.out
 	make clean
 
 clean:
 	rm *.o
-	# rm *.out
+	rm *.out

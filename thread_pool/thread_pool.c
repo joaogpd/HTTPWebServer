@@ -204,3 +204,11 @@ int request_thread_from_pool(thread_task_t task, void* arg) {
 
     return 0;
 }
+
+bool is_thread_pool_spawned(void) {
+    pthread_mutex_lock(&thread_pool_mutex);
+    bool status = (thread_pool != NULL);
+    pthread_mutex_unlock(&thread_pool_mutex);
+
+    return status;
+}

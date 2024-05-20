@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include "../arena/arena.h"
 
+#define DEBUG
+
 typedef void*(*thread_task_t)(void*);
 
 struct thread_queue_node {
@@ -25,6 +27,7 @@ struct thread_queue {
 };
 
 int spawn_thread_pool(int nthreads);
+bool is_thread_pool_spawned(void);
 int request_thread_from_pool(thread_task_t task, void* arg);
 void teardown_thread_pool(void);
 

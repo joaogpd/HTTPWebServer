@@ -10,10 +10,14 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include "../thread_pool/thread_pool.h"
 
 #define DEBUG
 #define LISTEN_BACKLOG 100
 #define MAX_MSG_SIZE 1024
+#define MAX_SOCK_THREADS 50
+#define THREAD_TIMEOUT_COUNTER 10
+#define THREAD_TIMEOUT_TIMER 2000 // microseconds
 
 struct host {
     char address[NI_MAXHOST];
@@ -38,5 +42,15 @@ int create_TCP_socket(int domain);
   * both IPv4 and IPv6 sockets.
   */
 int connect_socket(int sockfd, struct sockaddr_storage *addr);
+
+int bind_socket(int sockfd, struct sockaddr_storage *addr);
+
+struct sockaddr* getsockaddr_from_host(struct host* host);
+
+int listen_on_socket(int sockfd);
+
+int select_read_socket(int nreadfds, int *readfds);
+
+int accept_conn_socket(int sockfd);
 
 #endif

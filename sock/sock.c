@@ -86,7 +86,12 @@ struct sockaddr* getsockaddr_from_host(struct host* host) {
     // AI_ADDRCONFIG will only return IPv4 or IPv6 addresses if there's at least one configured
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE | AI_ADDRCONFIG; 
 
-    int error = getaddrinfo(host->address, host->port, &hints, &response);
+    int error = 0;
+    if (strcmp(host->address, "") == 0) {
+        error = getaddrinfo(NULL, host->port, &hints, &response);
+    } else {
+        error = getaddrinfo(host->address, host->port, &hints, &response);
+    }
 
     if (error != 0) {
 #ifdef DEBUG
@@ -129,6 +134,19 @@ int listen_on_socket(int sockfd) {
     return 0;
 }
 
+static void* thread_accept_conn_socket(void* sockfd) {
+    if (sockfd == NULL) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: sockfd argument is NULL\n");
+#endif
+        return NULL;
+    }
+
+    accept_conn_socket(*((int*)sockfd));
+
+    return NULL;
+}
+
 int select_read_socket(int nreadfds, int *readfds) {
     fd_set fd_set_readfds;
 
@@ -149,8 +167,28 @@ int select_read_socket(int nreadfds, int *readfds) {
         return -1;
     }
 
+    if (!is_thread_pool_spawned()) {
+        spawn_thread_pool(MAX_SOCK_THREADS);
+    }
+
     for (int i = 0; i < nreadfds; i++) {
-        // spawn a thread for every available for reading file descriptor
+        if (FD_ISSET(readfds[i], &fd_set_readfds) != 0) {
+            int error = 0;
+            int timeout_counter = 0;
+            while ((error = request_thread_from_pool(thread_accept_conn_socket, (void*)(readfds + i))) != 0) {
+#ifdef DEBUG
+                printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
+#endif
+                usleep(THREAD_TIMEOUT_TIMER);
+                timeout_counter++;
+                if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
+#ifdef DEBUG
+                    printf("ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", THREAD_TIMEOUT_COUNTER);
+#endif
+                    break;
+                }
+            }
+        }
     }
 
     return 0;
