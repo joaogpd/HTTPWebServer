@@ -4,20 +4,20 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define PORT "8223"
+#define PORT "8224"
 
 int sockfd = -1;
 
 void terminate(int sig) {
     close_socket(sockfd, 10);
     teardown_thread_pool();
-    _exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS); // exit isn't async-signal safe
 }
 
 int main(void) {
     signal(SIGINT, terminate);
 
-    sockfd = create_TCP_socket(AF_INET6);
+    sockfd = create_TCP_socket(AF_INET);
 
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, NULL, 0);
 
