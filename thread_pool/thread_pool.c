@@ -5,29 +5,35 @@
 pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct thread_queue* thread_pool = NULL;
 
+pthread_mutex_t thread_in_use_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct thread_queue* thread_in_use = NULL;
+
 pthread_mutex_t arena_id_mutex = PTHREAD_MUTEX_INITIALIZER;
 arena_t arena_id;
 
-static void insert_new_thread(struct thread_queue_node* node) {
+// this should be called inside a pthread_mutex_lock environment
+static void insert_new_thread(struct thread_queue_node* node, struct thread_queue* head) {
     if (!node->removed) {
         return;
     }
     node->removed = false;
-    if (thread_pool->first == NULL) {
-        thread_pool->first = thread_pool->last = node;
+    if (head->first == NULL) {
+        head->first = head->last = node;
     } else {
-        thread_pool->last->next = node;
-        thread_pool->last = node;
+        head->last->next = node;
+        head->last = node;
     }
 }
 
-static struct thread_queue_node* remove_first_thread(void) {
-    struct thread_queue_node* thread = thread_pool->first;
 
-    if (thread_pool->first == thread_pool->last) {
-        thread_pool->first = thread_pool->last = NULL;
+// this should be called inside a pthread_mutex_lock environment
+static struct thread_queue_node* remove_first_thread(struct thread_queue* head) {
+    struct thread_queue_node* thread = head->first;
+
+    if (head->first == head->last) {
+        head->first = head->last = NULL;
     } else {
-        thread_pool->first = thread->next;
+        head->first = thread->next;
     }
 
     thread->next = NULL;
@@ -37,7 +43,9 @@ static struct thread_queue_node* remove_first_thread(void) {
 }
 
 static void return_thread_to_pool(struct thread_queue_node* thread) {
-    insert_new_thread(thread);
+    pthread_mutex_lock(&(thread->mutex));
+    insert_new_thread(thread, thread_pool);
+    pthread_mutex_unlock(&(thread->mutex));
 }
 
 static void* new_thread_wait(void* arg) {
@@ -111,7 +119,9 @@ int spawn_thread_pool(int nthreads) {
     }
 
     pthread_mutex_lock(&arena_id_mutex);
-    arena_id = arena_allocate(2 * (nthreads * sizeof(struct thread_queue_node) + sizeof(struct thread_queue)));
+    // create enough bytes to hold two linked list of nthreads nodes and two queue heads, times 2
+    long alloc_size = 4 * (nthreads * sizeof(struct thread_queue_node) + sizeof(struct thread_queue));
+    arena_id = arena_allocate(alloc_size);
     pthread_mutex_unlock(&arena_id_mutex);
 
     if (arena_id == -1) {
@@ -194,7 +204,7 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        insert_new_thread(new_node);
+        insert_new_thread(new_node, thread_pool);
     }
 
     pthread_mutex_unlock(&thread_pool_mutex);
@@ -221,9 +231,8 @@ int request_thread_from_pool(thread_task_t task, void* arg) {
         pthread_mutex_unlock(&thread_pool_mutex);
         return -3;
     }
-
     
-    struct thread_queue_node* thread = remove_first_thread();
+    struct thread_queue_node* thread = remove_first_thread(thread_pool);
 
     thread->arg = arg;
     thread->task = task;
