@@ -10,12 +10,14 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "../thread_pool/thread_pool.h"
 
 #define DEBUG
+
 #define LISTEN_BACKLOG 100
 #define MAX_MSG_SIZE 1024
-#define MAX_SOCK_THREADS 50
+#define MAX_SOCK_THREADS 3
 #define THREAD_TIMEOUT_COUNTER 10
 #define THREAD_TIMEOUT_TIMER 2000 // microseconds
 
@@ -51,7 +53,7 @@ struct addrinfo* getsockaddr_from_host(struct host* host);
 
 int listen_on_socket(int sockfd);
 
-int select_read_socket(int nreadfds, int *readfds);
+// int select_read_socket(int nreadfds, int *readfds);
 
 int accept_conn_socket(int sockfd);
 

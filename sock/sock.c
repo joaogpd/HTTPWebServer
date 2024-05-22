@@ -1,8 +1,13 @@
 #include "sock.h"
 #include <netdb.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <string.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+
+arena_t arena_sock = -1;
+pthread_mutex_t arena_sock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int create_TCP_socket(int domain) {
     if (domain != AF_INET && domain != AF_INET6) {
@@ -134,24 +139,24 @@ int listen_on_socket(int sockfd) {
     return 0;
 }
 
-static void* thread_accept_conn_socket(void* sockfd) {
-    if (sockfd == NULL) {
-#ifdef DEBUG
-        fprintf(stderr, "ERROR: sockfd argument is NULL\n");
-#endif
-        return NULL;
-    }
+// static void* thread_accept_conn_socket(void* sockfd) {
+//     if (sockfd == NULL) {
+// #ifdef DEBUG
+//         fprintf(stderr, "ERROR: sockfd argument is NULL\n");
+// #endif
+//         return NULL;
+//     }
 
-    accept_conn_socket(*((int*)sockfd));
+//     accept_conn_socket(*((int*)sockfd));
 
-    if (close_socket(*((int*)sockfd), 10) != 0) {
-#ifdef DEBUG
-        fprintf(stderr, "ERROR: couldn't close socket fd\n");
-#endif
-    }
+//     if (close_socket(*((int*)sockfd), 10) != 0) {
+// #ifdef DEBUG
+//         fprintf(stderr, "ERROR: couldn't close socket fd\n");
+// #endif
+//     }
 
-    return NULL;
-}
+//     return NULL;
+// }
 
 int close_socket(int sockfd, int maxtries) {
     int error = 0;
@@ -171,76 +176,131 @@ int close_socket(int sockfd, int maxtries) {
     return 0;
 }
 
-int select_read_socket(int nreadfds, int *readfds) {
-    fd_set fd_set_readfds;
+// int select_read_socket(int nreadfds, int *readfds) {
+//     fd_set fd_set_readfds;
 
-    FD_ZERO(&fd_set_readfds);
+//     FD_ZERO(&fd_set_readfds);
 
-    for (int i = 0; i < nreadfds; i++) {
-        FD_SET(readfds[i], &fd_set_readfds);
-    }
+//     for (int i = 0; i < nreadfds; i++) {
+//         FD_SET(readfds[i], &fd_set_readfds);
+//     }
 
-    int max_fds = nreadfds + 1;
+//     int max_fds = nreadfds + 1;
 
-    printf("I am waiting on select\n");
-    int error = select(max_fds, &fd_set_readfds, NULL, NULL, NULL);
-    printf("I got past select\n");
+//     printf("I am waiting on select\n");
+//     int error = select(max_fds, &fd_set_readfds, NULL, NULL, NULL);
+//     printf("I got past select\n");
 
-    if (error == -1) {
-#ifdef DEBUG
-        fprintf(stderr, "ERROR: couldn't wait on select on sockets. Error: %s\n", strerror(errno));
-#endif
-        return -1;
-    }
+//     if (error == -1) {
+// #ifdef DEBUG
+//         fprintf(stderr, "ERROR: couldn't wait on select on sockets. Error: %s\n", strerror(errno));
+// #endif
+//         return -1;
+//     }
 
-    if (!is_thread_pool_spawned()) {
-        spawn_thread_pool(MAX_SOCK_THREADS);
-    }
+//     if (!is_thread_pool_spawned()) {
+//         spawn_thread_pool(MAX_SOCK_THREADS);
+//     }
 
-    for (int i = 0; i < nreadfds; i++) {
-        if (FD_ISSET(readfds[i], &fd_set_readfds) != 0) {
-            int error = 0;
-            int timeout_counter = 0;
-            while ((error = request_thread_from_pool(thread_accept_conn_socket, (void*)(readfds + i))) != 0) {
-#ifdef DEBUG
-                printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
-#endif
-                usleep(THREAD_TIMEOUT_TIMER);
-                timeout_counter++;
-                if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
-#ifdef DEBUG
-                    printf("ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", THREAD_TIMEOUT_COUNTER);
-#endif
-                    break;
-                }
-            }
-        }
-    }
+//     for (int i = 0; i < nreadfds; i++) {
+//         if (FD_ISSET(readfds[i], &fd_set_readfds) != 0) {
+//             int error = 0;
+//             int timeout_counter = 0;
+//             while ((error = request_thread_from_pool(thread_accept_conn_socket, (void*)(readfds + i))) != 0) {
+// #ifdef DEBUG
+//                 printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
+// #endif
+//                 usleep(THREAD_TIMEOUT_TIMER);
+//                 timeout_counter++;
+//                 if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
+// #ifdef DEBUG
+//                     printf(
+//                         "ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", 
+//                          THREAD_TIMEOUT_COUNTER);
+// #endif
+//                     break;
+//                 }
+//             }
+//         }
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 void* thread_read_socket(void* sockfd) {
     char hostname[NI_MAXHOST] = {0}, servname[NI_MAXSERV] = {0};
     char data[MAX_MSG_SIZE] = {0};
 
+    int sockfd_int = *((int*)sockfd);
+
     struct sockaddr addr = {0};
     socklen_t addrlen = sizeof(struct sockaddr);
 
     // TODO: check for errors
-    getpeername(*((int*)sockfd), &addr, &addrlen); 
+    getpeername(sockfd_int, &addr, &addrlen); 
 
     // TODO: check for errors
     getnameinfo(&addr, addrlen, hostname, sizeof hostname, 
         servname, sizeof servname, NI_NUMERICHOST | NI_NUMERICSERV);
 
-    int byte_count = 0;
-    while (!((byte_count = read(*((int*)sockfd), data, MAX_MSG_SIZE)) <= 0)) {
+    fd_set readfds;
+    fd_set writefds;
+    fd_set exceptfds;
+
+    FD_ZERO(&readfds);
+    FD_SET(sockfd_int, &readfds);
+    
+    FD_ZERO(&writefds);
+    FD_ZERO(&exceptfds);
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 200000; // wait for 200ms
+
+    int error = select(sockfd_int + 1, &readfds, &writefds, &exceptfds, &timeout);
+
+    if (error > 0) {
+        if (FD_ISSET(sockfd_int, &readfds)) {
+            int byte_count = 0;
+            byte_count = read(sockfd_int, data, MAX_MSG_SIZE);
+
 #ifdef DEBUG
-        printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
+            printf("past read\n");
 #endif
-        memset(data, 0, sizeof(data));
+
+            // connection ended
+            if (byte_count <= 0) { 
+                return (void*)-1;
+            }
+
+#ifdef DEBUG
+            printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
+#endif
+        }
     }
+    
+    return NULL;
+}
+
+void* thread_close_socket(void* sockfd) {
+    if (sockfd == NULL) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: pointer to socket descriptor is NULL\n");
+#endif
+        return NULL;
+    }
+
+    int error = close_socket(*((int*)sockfd), 10);
+
+    if (error != 0) {
+#ifdef DEBUG
+        printf("Couldn't close (thread) socket file descriptor\n");
+#endif
+    }
+
+    pthread_mutex_lock(&(arena_sock_mutex));
+    arena_free_memory(arena_sock, sockfd);
+    pthread_mutex_unlock(&(arena_sock_mutex));
 
     return NULL;
 }
@@ -266,9 +326,19 @@ int thread_pool_accept_conn_socket(int sockfd) {
         }
     }
 
+    arena_sock = arena_allocate(1000);
+    if (arena_sock == -1) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: couldn't create new arena\n");
+#endif
+        return -1;
+    }
+
     while (1) {
         // printf("I am on accept\n");
+        // accept4 to atomically make sockfd non blocking
         int new_sockfd = accept(sockfd, &addr, &addrlen);
+        // printf("I got past fucking accept\n");
 
         if (new_sockfd == -1) {
 #ifdef DEBUG
@@ -282,9 +352,36 @@ int thread_pool_accept_conn_socket(int sockfd) {
             continue;
         }
 
+//         if (fcntl(new_sockfd, F_SETFL, O_NONBLOCK) != 0) {
+// #ifdef DEBUG
+//             fprintf(stderr,
+//                  "ERROR: couldn't set socket fd to non blocking mode: Error: %s\n", 
+//                  strerror(errno));
+// #endif
+//             return -1;
+//         }
+
         int error = 0;
         int timeout_counter = 0;
-        while ((error = request_thread_from_pool(thread_read_socket, (void*)&new_sockfd)) != 0) {
+        pthread_mutex_lock(&(arena_sock_mutex));
+        int *new_sockfd_heap = (int*)arena_request_memory(arena_sock, sizeof(int));
+        pthread_mutex_unlock(&(arena_sock_mutex));
+        
+        if (new_sockfd_heap == NULL) {
+#ifdef DEBUG
+            fprintf(stderr, "ERROR: couldn't allocate memory for socket fd\n");
+#endif
+            return -1;
+        }
+
+        *new_sockfd_heap = new_sockfd;
+
+#ifdef DEBUG
+        printf("I'm not here\n");
+#endif
+
+        while ((error = request_thread_from_pool(thread_read_socket, thread_close_socket, NULL, 
+                                                (void*)new_sockfd_heap, FOREVER, 0, true, arena_sock) != 0)) {
 #ifdef DEBUG
             printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
 #endif
@@ -327,7 +424,7 @@ int accept_conn_socket(int sockfd) {
     int byte_count = 0;
     while (!((byte_count = read(new_sockfd, data, MAX_MSG_SIZE)) == 0)) {
 #ifdef DEBUG
-        printf("Got message of size %d bytes from %s:%s: %s", byte_count, hostname, servname, data);
+        printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
 #endif
     }
 

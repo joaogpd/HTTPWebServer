@@ -5,78 +5,215 @@
 pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct thread_queue* thread_pool = NULL;
 
-pthread_mutex_t thread_in_use_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct thread_queue* thread_in_use = NULL;
-
 pthread_mutex_t arena_id_mutex = PTHREAD_MUTEX_INITIALIZER;
-arena_t arena_id;
+arena_t arena_id; // arena responsible for holding all the heap allocated values
 
-// this should be called inside a pthread_mutex_lock environment
-static void insert_new_thread(struct thread_queue_node* node, struct thread_queue* head) {
-    if (!node->removed) {
+// Finds the first idle thread from the thread pool and returns it.
+// This should be called within a critical region for "thread_pool_mutex"
+static struct thread *find_idle_thread(void) {
+    // pthread_mutex_lock(&(thread_pool_mutex));
+    struct thread *idle_thread = thread_pool->first;
+    struct thread *prev_thread = NULL;
+
+    if (idle_thread == NULL) {
+#ifdef DEBUG
+        // this a fatal error and should never happen, as the thread pool can't be initiated with no threads
+        fprintf(stderr, "ERROR: the thread pool seems to be empty\n");
+#endif  
+        // pthread_mutex_unlock(&(thread_pool_mutex));
+        return NULL;
+    }
+
+    while (idle_thread != NULL) {
+        if (idle_thread->state == IDLE) {
+            break;
+        }
+        prev_thread = idle_thread;
+        idle_thread = idle_thread->next;
+    }
+
+    if (idle_thread == NULL) {
+#ifdef DEBUG
+        printf("No idle thread was found\n");
+#endif
+        // pthread_mutex_unlock(&(thread_pool_mutex));
+        return NULL; 
+    }
+
+    printf("idle: %p, prev: %p\n", idle_thread, prev_thread);
+
+    // move thread to end of queue
+    idle_thread->state = EXECUTING;
+    if (prev_thread == NULL) { // first thread in queue, only change if not only node
+        if (idle_thread != thread_pool->last) {
+            thread_pool->first = idle_thread->next;
+            idle_thread->next = NULL;
+            thread_pool->last->next = idle_thread;
+            thread_pool->last = idle_thread;
+        }
+    } else if (idle_thread != thread_pool->last) { 
+        // move to back of queue, quicken search for idle, but only if not already there
+        prev_thread->next = idle_thread->next;
+        idle_thread->next = NULL;
+        thread_pool->last->next = idle_thread;
+        thread_pool->last = idle_thread;
+    }
+
+    // pthread_mutex_unlock(&(thread_pool_mutex));
+
+    return idle_thread;
+}
+
+static void show_thread_pool(char* msg) {
+#ifdef DEBUG
+    printf("Starting show threads %s ----------\n", msg);
+    for (struct thread* thread = thread_pool->first; thread != NULL; thread = thread->next) {
+        printf("Showing thread %ld, state: %d\n", thread->id, thread->state);
+    }
+    printf("Finishing show threads ----------\n");
+#endif
+}
+
+static void return_thread_to_idle(pthread_t id) {
+    pthread_mutex_lock(&(thread_pool_mutex));
+
+    show_thread_pool("rt bf");
+
+#ifdef DEBUG
+    printf("Thread %ld has been made idle\n", id);
+#endif
+
+    for (struct thread* thread = thread_pool->first; thread != NULL; thread = thread->next) {
+        pthread_mutex_lock(&(thread->thread_mutex));
+        if (thread->id == id) {
+            thread->state = IDLE;
+            thread->arg = NULL;
+            thread->task = NULL;
+            thread->prelude = NULL;
+            thread->cleanup = NULL;
+            thread->mode = NONE;
+            thread->mode_counter = 0;
+            thread->arena_allocated_arg = false;
+            thread->arena_id_arg = -1;
+            pthread_mutex_unlock(&(thread->thread_mutex));
+            break;
+        }
+        pthread_mutex_unlock(&(thread->thread_mutex));
+    }
+
+    show_thread_pool("rt af");
+
+    pthread_mutex_unlock(&(thread_pool_mutex));
+};
+
+// this should be called within a critical region for "thread_pool_mutex"
+static void insert_thread_in_pool(struct thread* thread) {
+    if (thread == NULL) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: inserted thread cannot be NULL\n");
+#endif
         return;
     }
-    node->removed = false;
-    if (head->first == NULL) {
-        head->first = head->last = node;
-    } else {
-        head->last->next = node;
-        head->last = node;
-    }
-}
 
-
-// this should be called inside a pthread_mutex_lock environment
-static struct thread_queue_node* remove_first_thread(struct thread_queue* head) {
-    struct thread_queue_node* thread = head->first;
-
-    if (head->first == head->last) {
-        head->first = head->last = NULL;
-    } else {
-        head->first = thread->next;
+    if (thread_pool == NULL) {
+#ifdef DEBUG
+        fprintf(stderr, "ERROR: thread pool hasn't been initialized yet\n");
+#endif
+        return;
     }
 
-    thread->next = NULL;
-    thread->removed = true;
-
-    return thread;
-}
-
-static void return_thread_to_pool(struct thread_queue_node* thread) {
-    pthread_mutex_lock(&(thread->mutex));
-    insert_new_thread(thread, thread_pool);
-    pthread_mutex_unlock(&(thread->mutex));
+    // thread pool empty
+    if (thread_pool->first == NULL) {
+        thread_pool->first = thread_pool->last = thread;
+    } else { 
+        thread_pool->last->next = thread;
+        thread_pool->last = thread;
+    }
 }
 
 static void* new_thread_wait(void* arg) {
-    struct thread_queue_node* thread = (struct thread_queue_node*)arg;
+    struct thread* thread = (struct thread*)arg;
 
     while (1) {
-        pthread_mutex_lock(&(thread->mutex));
-        pthread_cond_wait(&(thread->cond), &(thread->mutex));
-        pthread_mutex_lock(&(thread->terminate_mutex));
-        if (thread->terminate) {
-            pthread_mutex_unlock(&(thread->terminate_mutex));
-            pthread_mutex_unlock(&(thread->mutex));
+        pthread_mutex_lock(&(thread->thread_mutex));
+        pthread_cond_wait(&(thread->task_ready_cond), &(thread->thread_mutex));
+        pthread_mutex_lock(&(thread->terminated_mutex));
+        if (thread->terminated) {
+            pthread_mutex_unlock(&(thread->terminated_mutex));
+            pthread_mutex_unlock(&(thread->thread_mutex));
             pthread_exit(NULL);
         }
-        pthread_mutex_unlock(&(thread->terminate_mutex));
-        pthread_mutex_unlock(&(thread->mutex));
+        pthread_mutex_unlock(&(thread->terminated_mutex));
+        pthread_mutex_unlock(&(thread->thread_mutex));
+
+        if (thread->prelude != NULL) {
+            thread->prelude(thread->arg);
+        }
 
         if (thread->task != NULL) {
+            if (thread->mode == ONCE) {
+                thread->task(thread->arg);
+            } else if (thread->mode == FOREVER) {
+                while (1) {
+                    if (thread->task(thread->arg) == (void*)-1) {
+                        // this means that program wants to free up thread 
+                        if (thread->arena_allocated_arg) {
+                            arena_free_memory(thread->arena_id_arg, arg);
+                        }
+                        break;
+                    }
+
+                    pthread_mutex_lock(&(thread->terminated_mutex));
+                    if (thread->terminated) {
+#ifdef DEBUG
+                        printf("Will perform cleanup\n");
+#endif
+                        if (thread->cleanup != NULL) {
+                            thread->cleanup(thread->arg);
+                        }
+                        pthread_mutex_unlock(&(thread->terminated_mutex));
+                        pthread_exit(NULL);
+                    }
+                    pthread_mutex_unlock(&(thread->terminated_mutex));
+                }
+            } else if (thread->mode == N_TIMES) {
+                for (int counter = 0; counter < thread->mode_counter; counter++) {
+                    if (thread->task(thread->arg) == (void*)-1) {
+                        // this means that program wants to free up thread 
+                        if (thread->arena_allocated_arg) {
+                            arena_free_memory(thread->arena_id_arg, arg);
+                        }
+                        break;
+                    }
+
+                    pthread_mutex_lock(&(thread->terminated_mutex));
+                    if (thread->terminated) {
+#ifdef DEBUG
+                        printf("Will perform cleanup\n");
+#endif
+                        if (thread->cleanup != NULL) {
+                            thread->cleanup(thread->arg);
+                        }
+                        pthread_mutex_unlock(&(thread->terminated_mutex));
+                        pthread_exit(NULL);
+                    }
+                    pthread_mutex_unlock(&(thread->terminated_mutex));
+                }
+            }
+
             thread->task(thread->arg);
         }
 
-        thread->task = NULL;
-        thread->arg = NULL;
-
-        return_thread_to_pool(thread);
+        return_thread_to_idle(thread->id);
     }
 
     return NULL;
 }
 
 void teardown_thread_pool(void) {
+#ifdef DEBUG
+    printf("teardown 0\n");
+#endif
     pthread_mutex_lock(&thread_pool_mutex);
 
     if (thread_pool == NULL) {
@@ -86,19 +223,30 @@ void teardown_thread_pool(void) {
         return;
     }
 
-    struct thread_queue_node* thread = thread_pool->first;
+#ifdef DEBUG
+    printf("teardown 1\n");
+#endif
+
+    struct thread* thread = thread_pool->first;
 
     while (thread != NULL) {
-        pthread_mutex_lock(&(thread->terminate_mutex));
-        thread->terminate = true;
-        pthread_mutex_unlock(&(thread->terminate_mutex));
-        pthread_mutex_lock(&(thread->mutex));
-        pthread_cond_signal(&(thread->cond));
-        pthread_mutex_unlock(&(thread->mutex));
-        pthread_join(thread->id, NULL);
+#ifdef DEBUG
+        printf("Thread %ld\n", thread->id);
+#endif
+        pthread_mutex_lock(&(thread->terminated_mutex));
+        thread->terminated = true;
+        pthread_mutex_unlock(&(thread->terminated_mutex));
+        pthread_mutex_lock(&(thread->thread_mutex));
+        pthread_cond_signal(&(thread->task_ready_cond));
+        pthread_mutex_unlock(&(thread->thread_mutex));
+        pthread_join(thread->id, NULL); // wait for thread to interrupt
 
         thread = thread->next;
     }
+
+#ifdef DEBUG
+    printf("teardown 2\n");
+#endif
 
     thread_pool = NULL;
 
@@ -114,13 +262,15 @@ int spawn_thread_pool(int nthreads) {
     if (thread_pool != NULL) {
         // NON FATAL ERROR -> user can request thread instead
         pthread_mutex_unlock(&thread_pool_mutex);
+#ifdef DEBUG
         printf("Thread pool has alread been spawned\n");
         return 1;
+#endif
     }
 
     pthread_mutex_lock(&arena_id_mutex);
-    // create enough bytes to hold two linked list of nthreads nodes and two queue heads, times 2
-    long alloc_size = 4 * (nthreads * sizeof(struct thread_queue_node) + sizeof(struct thread_queue));
+    // create enough bytes to hold linked list of nthreads nodes and one queue head, times 2
+    long alloc_size = 2 * (nthreads * sizeof(struct thread) + sizeof(struct thread_queue));
     arena_id = arena_allocate(alloc_size);
     pthread_mutex_unlock(&arena_id_mutex);
 
@@ -144,13 +294,12 @@ int spawn_thread_pool(int nthreads) {
     }
 
     thread_pool->first = thread_pool->last = NULL;
-    thread_pool->max_threads = nthreads;
 
     for (int i = 0; i < nthreads; i++) {
-        struct thread_queue_node* new_node = 
-            (struct thread_queue_node*)arena_request_memory(arena_id, sizeof(struct thread_queue_node));
+        struct thread* new_thread = 
+            (struct thread*)arena_request_memory(arena_id, sizeof(struct thread));
 
-        if (new_node == NULL) {
+        if (new_thread == NULL) {
 #ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't allocate memory for thread_queue_node structure\n");
 #endif
@@ -159,7 +308,7 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        int error = pthread_cond_init(&(new_node->cond), NULL);
+        int error = pthread_cond_init(&(new_thread->task_ready_cond), NULL);
         if (error != 0) {
 #ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize pthread_cond. Error: %s\n", strerror(errno));
@@ -169,7 +318,7 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        error = pthread_mutex_init(&(new_node->mutex), NULL);
+        error = pthread_mutex_init(&(new_thread->thread_mutex), NULL);
         if (error != 0) {
 #ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize thread mutex. Error: %s\n", strerror(errno));
@@ -179,7 +328,7 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        error = pthread_mutex_init(&(new_node->terminate_mutex), NULL);
+        error = pthread_mutex_init(&(new_thread->terminated_mutex), NULL);
         if (error != 0) {
 #ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize thread terminate mutex. Error: %s\n", strerror(errno));
@@ -189,12 +338,19 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        new_node->next = NULL;
-        new_node->task = NULL;
-        new_node->terminate = false;
-        new_node->removed = true;
+        new_thread->task = NULL;
+        new_thread->cleanup = NULL;
+        new_thread->prelude = NULL;
+        new_thread->state = IDLE;
+        new_thread->terminated = false;
+        new_thread->mode = NONE;
+        new_thread->mode_counter = -1;
+        new_thread->arg = NULL;
+        new_thread->arena_allocated_arg = false;
+        new_thread->arena_id_arg = -1;
+        new_thread->next = NULL;
 
-        error = pthread_create(&(new_node->id), NULL, new_thread_wait, (void*)new_node);
+        error = pthread_create(&(new_thread->id), NULL, new_thread_wait, (void*)new_thread);
         if (error != 0) {
 #ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't create new thread. Error: %s\n", strerror(errno));
@@ -204,7 +360,7 @@ int spawn_thread_pool(int nthreads) {
             return -1;
         }
 
-        insert_new_thread(new_node, thread_pool);
+        insert_thread_in_pool(new_thread);
     }
 
     pthread_mutex_unlock(&thread_pool_mutex);
@@ -212,7 +368,9 @@ int spawn_thread_pool(int nthreads) {
     return 0;
 }
 
-int request_thread_from_pool(thread_task_t task, void* arg) {
+int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_task_t prelude, 
+                            void* arg, execution_mode_t mode, int mode_counter,
+                            bool arena_allocated_arg, arena_t arena_id_arg) {
     pthread_mutex_lock(&thread_pool_mutex);
     if (thread_pool == NULL) {
 #ifdef DEBUG
@@ -223,7 +381,19 @@ int request_thread_from_pool(thread_task_t task, void* arg) {
         return -2;
     }
 
-    if (thread_pool->first == NULL) {
+    show_thread_pool("fp bf");
+    
+    struct thread* thread = find_idle_thread();
+
+    show_thread_pool("fp af");
+
+#ifdef DEBUG
+    if (thread != NULL) {
+        printf("Thread %p id: %ld\n", thread, thread->id);
+    }
+#endif
+
+    if (thread == NULL) {
 #ifdef DEBUG
         // NON FATAL ERROR -> user can wait until a thread is available
         fprintf(stderr, "ERROR: no thread is currently available\n");
@@ -231,15 +401,19 @@ int request_thread_from_pool(thread_task_t task, void* arg) {
         pthread_mutex_unlock(&thread_pool_mutex);
         return -3;
     }
-    
-    struct thread_queue_node* thread = remove_first_thread(thread_pool);
 
     thread->arg = arg;
     thread->task = task;
+    thread->cleanup = cleanup;
+    thread->prelude = prelude;
+    thread->mode = mode;
+    thread->mode_counter = mode_counter;
+    thread->arena_allocated_arg = arena_allocated_arg;
+    thread->arena_id_arg = arena_id_arg;
 
-    pthread_mutex_lock(&(thread->mutex));
-    pthread_cond_signal(&(thread->cond));
-    pthread_mutex_unlock(&(thread->mutex));
+    pthread_mutex_lock(&(thread->thread_mutex));
+    pthread_cond_signal(&(thread->task_ready_cond));
+    pthread_mutex_unlock(&(thread->thread_mutex));
 
     pthread_mutex_unlock(&thread_pool_mutex);
 
@@ -253,3 +427,4 @@ bool is_thread_pool_spawned(void) {
 
     return status;
 }
+

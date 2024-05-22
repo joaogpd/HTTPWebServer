@@ -4,13 +4,14 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#define PORT "8224"
+#define PORT "8222"
 
 int sockfd = -1;
 
 void terminate(int sig) {
     close_socket(sockfd, 10);
     teardown_thread_pool();
+    arena_cleanup();
     _exit(EXIT_SUCCESS); // exit isn't async-signal safe
 }
 
@@ -40,7 +41,9 @@ int main(void) {
 
     listen_on_socket(sockfd);
 
-    thread_pool_accept_conn_socket(sockfd);
+    if (thread_pool_accept_conn_socket(sockfd) != 0) {
+        printf("something went bad dude, this shouldn't even return\n");
+    }
 
     while (1);
 
