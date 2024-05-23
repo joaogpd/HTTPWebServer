@@ -176,57 +176,6 @@ int close_socket(int sockfd, int maxtries) {
     return 0;
 }
 
-// int select_read_socket(int nreadfds, int *readfds) {
-//     fd_set fd_set_readfds;
-
-//     FD_ZERO(&fd_set_readfds);
-
-//     for (int i = 0; i < nreadfds; i++) {
-//         FD_SET(readfds[i], &fd_set_readfds);
-//     }
-
-//     int max_fds = nreadfds + 1;
-
-//     printf("I am waiting on select\n");
-//     int error = select(max_fds, &fd_set_readfds, NULL, NULL, NULL);
-//     printf("I got past select\n");
-
-//     if (error == -1) {
-// #ifdef DEBUG
-//         fprintf(stderr, "ERROR: couldn't wait on select on sockets. Error: %s\n", strerror(errno));
-// #endif
-//         return -1;
-//     }
-
-//     if (!is_thread_pool_spawned()) {
-//         spawn_thread_pool(MAX_SOCK_THREADS);
-//     }
-
-//     for (int i = 0; i < nreadfds; i++) {
-//         if (FD_ISSET(readfds[i], &fd_set_readfds) != 0) {
-//             int error = 0;
-//             int timeout_counter = 0;
-//             while ((error = request_thread_from_pool(thread_accept_conn_socket, (void*)(readfds + i))) != 0) {
-// #ifdef DEBUG
-//                 printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
-// #endif
-//                 usleep(THREAD_TIMEOUT_TIMER);
-//                 timeout_counter++;
-//                 if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
-// #ifdef DEBUG
-//                     printf(
-//                         "ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", 
-//                          THREAD_TIMEOUT_COUNTER);
-// #endif
-//                     break;
-//                 }
-//             }
-//         }
-//     }
-
-//     return 0;
-// }
-
 void* thread_read_socket(void* sockfd) {
     char hostname[NI_MAXHOST] = {0}, servname[NI_MAXSERV] = {0};
     char data[MAX_MSG_SIZE] = {0};
@@ -335,10 +284,7 @@ int thread_pool_accept_conn_socket(int sockfd) {
     }
 
     while (1) {
-        // printf("I am on accept\n");
-        // accept4 to atomically make sockfd non blocking
         int new_sockfd = accept(sockfd, &addr, &addrlen);
-        // printf("I got past fucking accept\n");
 
         if (new_sockfd == -1) {
 #ifdef DEBUG
@@ -351,15 +297,6 @@ int thread_pool_accept_conn_socket(int sockfd) {
             }
             continue;
         }
-
-//         if (fcntl(new_sockfd, F_SETFL, O_NONBLOCK) != 0) {
-// #ifdef DEBUG
-//             fprintf(stderr,
-//                  "ERROR: couldn't set socket fd to non blocking mode: Error: %s\n", 
-//                  strerror(errno));
-// #endif
-//             return -1;
-//         }
 
         int error = 0;
         int timeout_counter = 0;
