@@ -36,16 +36,15 @@ int main(void) {
 
     if (error != 0) {
         close_socket(sockfd, 10);
+        printf("Couldn't bind socket\n");
         return EXIT_FAILURE;
     }
 
     listen_on_socket(sockfd);
 
     if (thread_pool_accept_conn_socket(sockfd) != 0) {
-        printf("something went bad dude, this shouldn't even return\n");
+        printf("Something went bad, this should never return\n");
     }
-
-    while (1);
 
     return 0;
 }
