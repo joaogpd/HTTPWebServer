@@ -330,6 +330,9 @@ int thread_pool_accept_conn_socket(int sockfd) {
                     "ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", 
                     THREAD_TIMEOUT_COUNTER);
 #endif
+                write(*new_sockfd_heap, BUSY_MSG, sizeof(BUSY_MSG));
+                close(*new_sockfd_heap);
+                arena_free_memory(arena_sock, new_sockfd_heap);
                 break;
             }
         }
