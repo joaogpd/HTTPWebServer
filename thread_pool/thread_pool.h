@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "../arena/arena.h"
 
-#define DEBUG
+#undef DEBUG
 
 typedef void*(*thread_task_t)(void*);
 

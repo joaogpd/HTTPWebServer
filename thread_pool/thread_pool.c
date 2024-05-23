@@ -9,7 +9,7 @@ pthread_mutex_t arena_id_mutex = PTHREAD_MUTEX_INITIALIZER;
 arena_t arena_id; // arena responsible for holding all the heap allocated values
 
 // Finds the first idle thread from the thread pool and returns it.
-// This should be called within a critical region for "thread_pool_mutex"
+// This should be called within a critical region for "thread_pool_mutex".
 static struct thread *find_idle_thread(void) {
     // pthread_mutex_lock(&(thread_pool_mutex));
     struct thread *idle_thread = thread_pool->first;
@@ -77,7 +77,9 @@ static void show_thread_pool(char* msg) {
 static void return_thread_to_idle(pthread_t id) {
     pthread_mutex_lock(&(thread_pool_mutex));
 
+#ifdef DEBUG
     show_thread_pool("rt bf");
+#endif
 
 #ifdef DEBUG
     printf("Thread %ld has been made idle\n", id);
@@ -101,7 +103,9 @@ static void return_thread_to_idle(pthread_t id) {
         pthread_mutex_unlock(&(thread->thread_mutex));
     }
 
+#ifdef DEBUG
     show_thread_pool("rt af");
+#endif
 
     pthread_mutex_unlock(&(thread_pool_mutex));
 };
@@ -381,11 +385,15 @@ int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_t
         return -2;
     }
 
+#ifdef DEBUG
     show_thread_pool("fp bf");
-    
+#endif
+
     struct thread* thread = find_idle_thread();
 
+#ifdef DEBUG
     show_thread_pool("fp af");
+#endif
 
 #ifdef DEBUG
     if (thread != NULL) {
