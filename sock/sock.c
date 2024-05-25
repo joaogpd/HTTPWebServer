@@ -213,18 +213,14 @@ void* thread_read_socket(void* sockfd) {
             int byte_count = 0;
             byte_count = read(sockfd_int, data, MAX_MSG_SIZE);
 
-#ifdef DEBUG
-            printf("past read\n");
-#endif
-
             // connection ended
             if (byte_count <= 0) { 
                 return (void*)-1;
             }
 
-#ifdef DEBUG
+// #ifdef DEBUG
             printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
-#endif
+// #endif
         }
     }
     
