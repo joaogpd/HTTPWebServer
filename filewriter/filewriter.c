@@ -96,13 +96,12 @@ void* write_log_buffer(void* arg) {
     }
     pthread_mutex_unlock(&log_writer_terminate_mutex);
     pthread_mutex_lock(&log_buffer_mutex);
-    struct buffer* entry = log_buffer;
-    while (entry != NULL) {
-        struct buffer* temp = entry->next;
-        fwrite(entry->value, sizeof(char), entry->valuelen, log_file);
-        arena_free_memory(filewriter_arena, entry->value);
-        arena_free_memory(filewriter_arena, entry);
-        entry = temp;
+    while (log_buffer != NULL) {
+        struct buffer* temp = log_buffer->next;
+        fwrite(log_buffer->value, sizeof(char), log_buffer->valuelen, log_file);
+        arena_free_memory(filewriter_arena, log_buffer->value);
+        arena_free_memory(filewriter_arena, log_buffer);
+        log_buffer = temp;
     }
     pthread_mutex_unlock(&log_buffer_mutex);
 
