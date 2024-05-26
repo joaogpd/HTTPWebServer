@@ -11,6 +11,8 @@
 #include <errno.h>
 #include "../arena/arena.h"
 
+#define TIME_MAX_SIZE 20
+
 struct buffer {
     char* value;
     struct timeval time;

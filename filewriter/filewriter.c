@@ -131,8 +131,11 @@ void* write_log_buffer(void* arg) {
             break;
         }
 
-        if (fwrite("\n", sizeof(char), 1, log_file) != 1) {
-            fprintf(stderr, "ERROR: couldn't write the the newline character to log file. Error: %s", strerror(errno));
+        char time[TIME_MAX_SIZE] = {0};
+        sprintf(time, ". At time: %ld\n", log_buffer->time.tv_sec);
+
+        if (fwrite(time, sizeof(char), strlen(time), log_file) != strlen(time)) {
+            fprintf(stderr, "ERROR: couldn't write time to log file. Error: %s", strerror(errno));
             break;
         }
 
