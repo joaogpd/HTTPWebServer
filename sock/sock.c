@@ -11,9 +11,7 @@ pthread_mutex_t arena_sock_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int create_TCP_socket(int domain) {
     if (domain != AF_INET && domain != AF_INET6) {
-#ifdef DEBUG
 	    fprintf(stderr, "ERROR: domain not supported\n");
-#endif
 	    return -1;
     }
 
@@ -21,11 +19,9 @@ int create_TCP_socket(int domain) {
     int sock_fd = socket(domain, SOCK_STREAM, IPPROTO_TCP);
 
     if (sock_fd == -1) {
-#ifdef DEBUG
 	    fprintf(stderr, 
             "ERROR: socket could not be opened. Error: %s\n",
             strerror(errno));
-#endif
     }
 
     return sock_fd;
@@ -35,9 +31,7 @@ int create_TCP_socket(int domain) {
 
 int connect_socket(int sockfd, struct sockaddr_storage *addr) {
     if (sockfd == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: socket descriptor is invalid\n");
-#endif
         return -1;
     }
 
@@ -48,9 +42,7 @@ int connect_socket(int sockfd, struct sockaddr_storage *addr) {
 
 int bind_socket(int sockfd, struct sockaddr_storage *addr) {
     if (addr == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: addr argument was NULL\n");
-#endif
         return -1;
     }
 
@@ -61,11 +53,9 @@ int bind_socket(int sockfd, struct sockaddr_storage *addr) {
     int error = bind(sockfd, (struct sockaddr*)addr, sockaddr_len);
 
     if (error == -1) {
-#ifdef DEBUG
         fprintf(stderr, 
             "ERROR: couldn't bind socket to host. Error: %s\n",
              strerror(errno));
-#endif
         return -1;
     }
 
@@ -74,9 +64,7 @@ int bind_socket(int sockfd, struct sockaddr_storage *addr) {
 
 struct addrinfo* getsockaddr_from_host(struct host* host) {
     if (host == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: host argument was NULL.\n");
-#endif
         return NULL;
     }
 
@@ -99,7 +87,6 @@ struct addrinfo* getsockaddr_from_host(struct host* host) {
     }
 
     if (error != 0) {
-#ifdef DEBUG
         if (error == EAI_SYSTEM) {
             fprintf(stderr, 
             "ERROR: couldn't get socket address from host. 'gai' error: %s. Error: %s\n", 
@@ -110,7 +97,6 @@ struct addrinfo* getsockaddr_from_host(struct host* host) {
             "ERROR: couldn't get socket address from host. 'getaddrinfo' error: %s.", 
                     gai_strerror(error));
         }
-#endif
         return NULL;
     }
 
@@ -119,54 +105,29 @@ struct addrinfo* getsockaddr_from_host(struct host* host) {
 
 int listen_on_socket(int sockfd) {
     if (sockfd == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: socket descriptor is invalid\n");
-#endif
         return -1;
     }
 
     int error = listen(sockfd, LISTEN_BACKLOG);
 
     if (error != 0) {
-#ifdef DEBUG
         fprintf(stderr, 
             "ERROR: couldn't start listening on socket. Error: %s\n",
             strerror(errno));
-#endif
         return -1;
     }
 
     return 0;
 }
 
-// static void* thread_accept_conn_socket(void* sockfd) {
-//     if (sockfd == NULL) {
-// #ifdef DEBUG
-//         fprintf(stderr, "ERROR: sockfd argument is NULL\n");
-// #endif
-//         return NULL;
-//     }
-
-//     accept_conn_socket(*((int*)sockfd));
-
-//     if (close_socket(*((int*)sockfd), 10) != 0) {
-// #ifdef DEBUG
-//         fprintf(stderr, "ERROR: couldn't close socket fd\n");
-// #endif
-//     }
-
-//     return NULL;
-// }
-
 int close_socket(int sockfd, int maxtries) {
     int error = 0;
     int counter = 0;
     while ((error = close(sockfd)) != 0) {
-#ifdef DEBUG
         fprintf(stderr,
          "ERROR: couldn't close socket. Error: %s\n", 
          strerror(errno));
-#endif
         counter++;
         if (counter >= maxtries) {
             return -1;
@@ -229,18 +190,14 @@ void* thread_read_socket(void* sockfd) {
 
 void* thread_close_socket(void* sockfd) {
     if (sockfd == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: pointer to socket descriptor is NULL\n");
-#endif
         return NULL;
     }
 
     int error = close_socket(*((int*)sockfd), 10);
 
     if (error != 0) {
-#ifdef DEBUG
         printf("Couldn't close (thread) socket file descriptor\n");
-#endif
     }
 
     pthread_mutex_lock(&(arena_sock_mutex));
@@ -252,9 +209,7 @@ void* thread_close_socket(void* sockfd) {
 
 int thread_pool_accept_conn_socket(int sockfd) {
     if (sockfd == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: socket descriptor is invalid\n");
-#endif
         return -1;
     }
 
@@ -264,18 +219,14 @@ int thread_pool_accept_conn_socket(int sockfd) {
     if (!is_thread_pool_spawned()) {
         int error = spawn_thread_pool(MAX_SOCK_THREADS);
         if (error != 0) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't spawn thread pool\n");
-#endif
             return -1;
         }
     }
 
     arena_sock = arena_allocate(1000);
     if (arena_sock == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: couldn't create new arena\n");
-#endif
         return -1;
     }
 
@@ -283,11 +234,9 @@ int thread_pool_accept_conn_socket(int sockfd) {
         int new_sockfd = accept(sockfd, &addr, &addrlen);
 
         if (new_sockfd == -1) {
-#ifdef DEBUG
             fprintf(stderr, 
                 "ERROR: invalid socket descriptor from accept. Error %s\n", 
                 strerror(errno));
-#endif
             if (errno == EBADF) { // connection was probably torn down
                 return -1;
             }
@@ -301,9 +250,7 @@ int thread_pool_accept_conn_socket(int sockfd) {
         pthread_mutex_unlock(&(arena_sock_mutex));
         
         if (new_sockfd_heap == NULL) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't allocate memory for socket fd\n");
-#endif
             return -1;
         }
 
@@ -339,9 +286,7 @@ int thread_pool_accept_conn_socket(int sockfd) {
 
 int accept_conn_socket(int sockfd) {
     if (sockfd == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: socket descriptor is invalid\n");
-#endif
         return -1;
     }
 

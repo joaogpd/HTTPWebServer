@@ -11,16 +11,12 @@ arena_t arena_id; // arena responsible for holding all the heap allocated values
 // Finds the first idle thread from the thread pool and returns it.
 // This should be called within a critical region for "thread_pool_mutex".
 static struct thread *find_idle_thread(void) {
-    // pthread_mutex_lock(&(thread_pool_mutex));
     struct thread *idle_thread = thread_pool->first;
     struct thread *prev_thread = NULL;
 
     if (idle_thread == NULL) {
-#ifdef DEBUG
         // this a fatal error and should never happen, as the thread pool can't be initiated with no threads
         fprintf(stderr, "ERROR: the thread pool seems to be empty\n");
-#endif  
-        // pthread_mutex_unlock(&(thread_pool_mutex));
         return NULL;
     }
 
@@ -113,16 +109,12 @@ static void return_thread_to_idle(pthread_t id) {
 // this should be called within a critical region for "thread_pool_mutex"
 static void insert_thread_in_pool(struct thread* thread) {
     if (thread == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: inserted thread cannot be NULL\n");
-#endif
         return;
     }
 
     if (thread_pool == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: thread pool hasn't been initialized yet\n");
-#endif
         return;
     }
 
@@ -204,8 +196,6 @@ static void* new_thread_wait(void* arg) {
                     pthread_mutex_unlock(&(thread->terminated_mutex));
                 }
             }
-
-            thread->task(thread->arg);
         }
 
         return_thread_to_idle(thread->id);
@@ -221,9 +211,7 @@ void teardown_thread_pool(void) {
     pthread_mutex_lock(&thread_pool_mutex);
 
     if (thread_pool == NULL) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: thread pool hasn't been initialized yet\n");
-#endif
         return;
     }
 
@@ -243,7 +231,10 @@ void teardown_thread_pool(void) {
         pthread_mutex_lock(&(thread->thread_mutex));
         pthread_cond_signal(&(thread->task_ready_cond));
         pthread_mutex_unlock(&(thread->thread_mutex));
-        pthread_join(thread->id, NULL); // wait for thread to interrupt
+        int val = 0;
+        if ((val = pthread_join(thread->id, NULL)) != 0) { 
+            fprintf(stderr, "ERROR: couldn't join %ld. Error: %d\n", thread->id, val);
+        }
 
         thread = thread->next;
     }
@@ -268,8 +259,8 @@ int spawn_thread_pool(int nthreads) {
         pthread_mutex_unlock(&thread_pool_mutex);
 #ifdef DEBUG
         printf("Thread pool has alread been spawned\n");
-        return 1;
 #endif
+        return 1;
     }
 
     pthread_mutex_lock(&arena_id_mutex);
@@ -279,9 +270,7 @@ int spawn_thread_pool(int nthreads) {
     pthread_mutex_unlock(&arena_id_mutex);
 
     if (arena_id == -1) {
-#ifdef DEBUG
         fprintf(stderr, "ERROR: couldn't allocate arena for thread pool\n");
-#endif
         pthread_mutex_unlock(&thread_pool_mutex);
         return -1;
     }
@@ -289,9 +278,7 @@ int spawn_thread_pool(int nthreads) {
     thread_pool = arena_request_memory(arena_id, sizeof(struct thread_queue));
 
     if (thread_pool == NULL) {
-#ifdef DEBUG
-        fprintf(stderr, "ERROR: couldn't allocate memory for thread_queue structure\n");
-#endif
+        fprintf(stderr, "ERROR: couldn't allocate memory for thread queue structure\n");
         pthread_mutex_unlock(&thread_pool_mutex);
         arena_deallocate(arena_id);
         return -1;
@@ -304,9 +291,7 @@ int spawn_thread_pool(int nthreads) {
             (struct thread*)arena_request_memory(arena_id, sizeof(struct thread));
 
         if (new_thread == NULL) {
-#ifdef DEBUG
-            fprintf(stderr, "ERROR: couldn't allocate memory for thread_queue_node structure\n");
-#endif
+            fprintf(stderr, "ERROR: couldn't allocate memory for thread queue node structure\n");
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
             return -1;
@@ -314,9 +299,7 @@ int spawn_thread_pool(int nthreads) {
 
         int error = pthread_cond_init(&(new_thread->task_ready_cond), NULL);
         if (error != 0) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize pthread_cond. Error: %s\n", strerror(errno));
-#endif
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
             return -1;
@@ -324,9 +307,7 @@ int spawn_thread_pool(int nthreads) {
 
         error = pthread_mutex_init(&(new_thread->thread_mutex), NULL);
         if (error != 0) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize thread mutex. Error: %s\n", strerror(errno));
-#endif
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
             return -1;
@@ -334,9 +315,7 @@ int spawn_thread_pool(int nthreads) {
 
         error = pthread_mutex_init(&(new_thread->terminated_mutex), NULL);
         if (error != 0) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't initialize thread terminate mutex. Error: %s\n", strerror(errno));
-#endif
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
             return -1;
@@ -356,9 +335,7 @@ int spawn_thread_pool(int nthreads) {
 
         error = pthread_create(&(new_thread->id), NULL, new_thread_wait, (void*)new_thread);
         if (error != 0) {
-#ifdef DEBUG
             fprintf(stderr, "ERROR: couldn't create new thread. Error: %s\n", strerror(errno));
-#endif  
             pthread_mutex_unlock(&thread_pool_mutex);
             teardown_thread_pool(); // teardown any already created threads
             return -1;
@@ -377,10 +354,8 @@ int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_t
                             bool arena_allocated_arg, arena_t arena_id_arg) {
     pthread_mutex_lock(&thread_pool_mutex);
     if (thread_pool == NULL) {
-#ifdef DEBUG
-        // NON FATAL ERROR -> user can spawn the thread pool instead
+        // NON FATAL ERROR -> user can spawn the thread pool instead -> can't be sent to buffer because no thread is available yet
         fprintf(stderr, "ERROR: thread pool hasn't been spawned yet\n"); 
-#endif
         pthread_mutex_unlock(&thread_pool_mutex);
         return -2;
     }
@@ -402,10 +377,8 @@ int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_t
 #endif
 
     if (thread == NULL) {
-#ifdef DEBUG
-        // NON FATAL ERROR -> user can wait until a thread is available
+        // NON FATAL ERROR -> user can wait until a thread is available -> can't be sent to buffer because no thread is available yet
         fprintf(stderr, "ERROR: no thread is currently available\n");
-#endif
         pthread_mutex_unlock(&thread_pool_mutex);
         return -3;
     }

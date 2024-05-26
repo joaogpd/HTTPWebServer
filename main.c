@@ -1,5 +1,7 @@
 #include "sock/sock.h"
 #include "thread_pool/thread_pool.h"
+#include "filewriter/filewriter.h"
+#include <pthread.h>
 #include <stdio.h>
 #include <netdb.h>
 #include <stdlib.h>
@@ -7,10 +9,12 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #define PORT "8222"
 #define DEBUG
 #define SHOW_PROPER_USAGE(program) printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", program)
+#define MAXTHREADS 5
 
 struct context {
     char* port;
@@ -20,21 +24,11 @@ struct context {
     bool background;
 };
 
+pthread_mutex_t terminate_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 int sockfd = -1;
 
 struct context* global_context = NULL;
-
-FILE* open_file(char* name, char* mode) {
-    FILE* file = fopen(name, mode);
-    if (file == NULL) {
-#ifdef DEBUG
-        fprintf(stderr, "ERROR: Couldn't open file %s with mode %s. Error: %s\n", name, mode, strerror(errno));
-#endif  
-        return NULL;
-    }
-
-    return file;
-}
 
 void free_global_context(void) {
     if (global_context != NULL) {
@@ -47,11 +41,6 @@ void free_global_context(void) {
 }
 
 int parse_args_into_global_context(int argc, char* argv[]) {
-    if (argc <= 1) { 
-        SHOW_PROPER_USAGE(argv[0]);
-        return -1;
-    }
-
     char* optstring = "p:l:s:br:";
     struct option options[] = {
         {"port", required_argument, NULL, 'p'},
@@ -138,25 +127,40 @@ void show_global_context(void) {
 }
 
 void terminate_failure(void) {
+    pthread_mutex_lock(&terminate_mutex);
     if (sockfd != -1) {
         close_socket(sockfd, 10);
     }
+    filewriter_cleanup();
     teardown_thread_pool();
     arena_cleanup();
     free_global_context();
+    pthread_mutex_unlock(&terminate_mutex);
     _exit(EXIT_FAILURE); // exit isn't async-signal safe
 }
 
-void terminate(int sig) {
+void terminate(int sig) {    
+    pthread_mutex_lock(&terminate_mutex);
     close_socket(sockfd, 10);
+    filewriter_cleanup();
     teardown_thread_pool();
     arena_cleanup();
     free_global_context();
+    pthread_mutex_unlock(&terminate_mutex);
     _exit(EXIT_SUCCESS); // exit isn't async-signal safe
 }
 
 int main(int argc, char *argv[]) {
-    int error = parse_args_into_global_context(argc, argv);
+    if (argc <= 1) { 
+        SHOW_PROPER_USAGE(argv[0]);
+        return -1;
+    }
+
+    int error = 0;
+
+    signal(SIGUSR1, terminate);
+
+    error = parse_args_into_global_context(argc, argv);
     if (error == -1) {
 #ifdef DEBUG
         fprintf(stderr, "ERROR: couldn't parse command line arguments into global context\n");
@@ -165,7 +169,21 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, terminate);
+    filewriter_init(global_context->log_filename, global_context->stats_filename);
+
+    if (!is_thread_pool_spawned()) {
+        if (spawn_thread_pool(MAXTHREADS) == -1) {
+            terminate_failure();
+            return EXIT_FAILURE;
+        }
+    }
+
+    error = request_thread_from_pool(write_log_buffer, NULL, set_write_log_buffer_id, NULL, FOREVER, 0, false, -1);
+    if (error != 0) {
+        fprintf(stderr, "ERROR: couldn't get thread for log buffer writer\n");
+        terminate_failure();
+        return EXIT_FAILURE;
+    }
 
     if (global_context->background) {
         if (daemon(1, 0) != 0) {
@@ -196,7 +214,7 @@ int main(int argc, char *argv[]) {
 
     if (error != 0) {
         close_socket(sockfd, 10);
-        printf("Couldn't bind socket\n");
+        fprintf(stderr, "FATAL ERROR: couldn't bind socket. Error: %s\n", strerror(errno));
         terminate_failure();
         return EXIT_FAILURE;
     }

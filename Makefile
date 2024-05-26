@@ -7,10 +7,14 @@ arena: arena/arena.c
 thread_pool: thread_pool/thread_pool.c
 	gcc -Wall -g -c thread_pool.o thread_pool/thread_pool.c
 
+filewriter: filewriter/filewriter.c
+	gcc -Wall -g -c filewriter.o filewriter/filewriter.c
+
 object: 
 	make sock
 	make arena
 	make thread_pool
+	make filewriter
 
 main:
 	make object

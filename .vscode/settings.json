@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/home/joaogpd/my_files/inf1370/trab2",
+            "binaryPath": "/home/joaogpd/my_files/inf1370/trab2/main.out",
+            "binaryArgs": []
+        }
+    ]
+}
