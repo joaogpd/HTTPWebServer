@@ -1,7 +1,7 @@
 #ifndef FILEWRITER_H
 #define FILEWRITER_H
 
-#define DEBUG
+#undef DEBUG
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -36,7 +36,9 @@ static struct thread *find_idle_thread(void) {
         return NULL; 
     }
 
+#ifdef DEBUG
     printf("idle: %p, prev: %p\n", idle_thread, prev_thread);
+#endif
 
     // move thread to end of queue
     idle_thread->state = EXECUTING;
@@ -132,6 +134,9 @@ static void* new_thread_wait(void* arg) {
 
     while (1) {
         pthread_mutex_lock(&(thread->thread_mutex));
+#ifdef DEBUG
+        printf("Thread %ld is idling\n", thread->id);
+#endif
         pthread_cond_wait(&(thread->task_ready_cond), &(thread->thread_mutex));
         pthread_mutex_lock(&(thread->terminated_mutex));
         if (thread->terminated) {
@@ -148,11 +153,24 @@ static void* new_thread_wait(void* arg) {
 
         if (thread->task != NULL) {
             if (thread->mode == ONCE) {
-                thread->task(thread->arg);
+                void* retval = thread->task(thread->arg);
+
+                if (thread->cleanup != NULL) {
+                    thread->cleanup(thread->arg);
+                }
+
+                if (retval == (void*)-2) {
+                    pthread_exit(NULL);
+                }
             } else if (thread->mode == FOREVER) {
                 while (1) {
-                    if (thread->task(thread->arg) == (void*)-1) {
-                        // this means that program wants to free up thread 
+                    void* retval = thread->task(thread->arg);
+                    if (retval != NULL) {
+                        // this means that program wants to free up thread or terminate it 
+#ifdef DEBUG
+                        printf("Thread %ld requested termination\n", thread->id);
+#endif
+
                         if (thread->arena_allocated_arg) {
                             arena_free_memory(thread->arena_id_arg, arg);
                         }
@@ -161,8 +179,13 @@ static void* new_thread_wait(void* arg) {
                             thread->cleanup(thread->arg);
                         }
 
-                        break;
-                    }
+                        if (retval == (void*)-1) {
+                            break;
+                        } else if (retval == (void*)-2) {
+                            remove_thread(thread->id);
+                            pthread_exit(NULL);
+                        }
+                    } 
 
                     pthread_mutex_lock(&(thread->terminated_mutex));
                     if (thread->terminated) {
@@ -179,8 +202,13 @@ static void* new_thread_wait(void* arg) {
                 }
             } else if (thread->mode == N_TIMES) {
                 for (int counter = 0; counter < thread->mode_counter; counter++) {
-                    if (thread->task(thread->arg) == (void*)-1) {
-                        // this means that program wants to free up thread 
+                    void* retval = thread->task(thread->arg);
+                    if (retval != NULL) {
+                        // this means that program wants to free up thread or terminate it
+#ifdef DEBUG
+                        printf("Thread %ld requested termination\n", thread->id);
+#endif
+
                         if (thread->arena_allocated_arg) {
                             arena_free_memory(thread->arena_id_arg, arg);
                         }
@@ -189,7 +217,12 @@ static void* new_thread_wait(void* arg) {
                             thread->cleanup(thread->arg);
                         }
 
-                        break;
+                        if (retval == (void*)-1) {
+                            break;
+                        } else if (retval == (void*)-2) {
+                            remove_thread(thread->id);
+                            pthread_exit(NULL);
+                        }
                     }
 
                     pthread_mutex_lock(&(thread->terminated_mutex));
@@ -208,10 +241,36 @@ static void* new_thread_wait(void* arg) {
             }
         }
 
+#ifdef DEBUG
+        printf("Thread %ld will be returned to idle\n", thread->id);
+#endif
+
         return_thread_to_idle(thread->id);
     }
 
     return NULL;
+}
+
+void remove_thread(pthread_t id) {
+    pthread_mutex_lock(&thread_pool_mutex);
+
+    struct thread* prev = NULL;
+    struct thread* thread = thread_pool->first;
+
+    while (thread != NULL) {
+        if (thread->id == id) {
+            break;
+        }
+        
+        prev = thread;
+        thread = thread->next;
+    }
+
+    if (thread != NULL) {
+        prev->next = thread->next;
+    }
+
+    pthread_mutex_unlock(&thread_pool_mutex);
 }
 
 void teardown_thread_pool(void) {
@@ -242,6 +301,9 @@ void teardown_thread_pool(void) {
         pthread_cond_signal(&(thread->task_ready_cond));
         pthread_mutex_unlock(&(thread->thread_mutex));
         int val = 0;
+#ifdef DEBUG
+        printf("Waiting to join thread\n");
+#endif
         if ((val = pthread_join(thread->id, NULL)) != 0) { 
             fprintf(stderr, "ERROR: couldn't join %ld. Error: %d\n", thread->id, val);
         }

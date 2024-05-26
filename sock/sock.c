@@ -137,6 +137,15 @@ int close_socket(int sockfd, int maxtries) {
     return 0;
 }
 
+static void* free_buffer_entry(void* arg) {
+    struct buffer* buffer_entry = (struct buffer*)arg;
+
+    arena_free_memory(arena_sock, buffer_entry->value);
+    arena_free_memory(arena_sock, buffer_entry);
+
+    return NULL;
+}
+
 void* thread_read_socket(void* sockfd) {
     char hostname[NI_MAXHOST] = {0}, servname[NI_MAXSERV] = {0};
     char data[MAX_MSG_SIZE] = {0};
@@ -165,7 +174,7 @@ void* thread_read_socket(void* sockfd) {
 
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 200000; // wait for 200ms
+    timeout.tv_usec = 2000; // wait for 2ms
 
     int error = select(sockfd_int + 1, &readfds, &writefds, &exceptfds, &timeout);
 
@@ -182,6 +191,40 @@ void* thread_read_socket(void* sockfd) {
 // #ifdef DEBUG
             printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
 // #endif
+            char log_message[MAX_MSG_SIZE] = {0};
+            strcat(log_message, "Requisition from ");
+            strcat(log_message, servname);
+
+            struct buffer* buffer_entry = arena_request_memory(arena_sock, sizeof(struct buffer));
+            if (buffer_entry == NULL) {
+                fprintf(stderr, 
+                    "ERROR: couldn't allocate memory for buffer entry structure. Error: %s\n", 
+                    strerror(errno));
+                return NULL;
+            }
+
+            buffer_entry->next = NULL;
+
+            gettimeofday(&(buffer_entry->time), NULL);
+
+            buffer_entry->value = arena_request_memory(arena_sock, sizeof(char) * (strlen(log_message + 1)));
+            if (buffer_entry->value == NULL) {
+                fprintf(stderr, 
+                    "ERROR: couldn't allocate memory for buffer entry structure. Error: %s\n", 
+                    strerror(errno));
+                return NULL;
+            }
+            
+            strcpy(buffer_entry->value, log_message);
+            buffer_entry->valuelen = strlen(log_message);
+
+            // we are passing false, although arg is arena allocated because freeing it is more complicated, should be done elsewhere
+            request_thread_from_pool(produce_buffer_entry, free_buffer_entry, 
+                NULL, (void*)buffer_entry, ONCE, 0, false, -1); 
+
+#ifdef DEBUG
+            printf("requested to produce message\n");
+#endif
         }
     }
     
@@ -194,7 +237,7 @@ void* thread_close_socket(void* sockfd) {
         return NULL;
     }
 
-    int error = close_socket(*((int*)sockfd), 10);
+    int error = close_socket(*((int*)sockfd), SOCKET_CLOSE_MAXTRIES);
 
     if (error != 0) {
         printf("Couldn't close (thread) socket file descriptor\n");
@@ -232,6 +275,10 @@ int thread_pool_accept_conn_socket(int sockfd) {
 
     while (1) {
         int new_sockfd = accept(sockfd, &addr, &addrlen);
+
+#ifdef DEBUG
+        printf("Got new socket descriptor: %d\n", new_sockfd);
+#endif
 
         if (new_sockfd == -1) {
             fprintf(stderr, 

@@ -63,15 +63,32 @@ void filewriter_cleanup(void) {
     log_writer_terminate = true;
     pthread_mutex_unlock(&log_writer_terminate_mutex);
 
+#ifdef DEBUG
+    printf("cleanup 1\n");
+#endif
+
     pthread_mutex_lock(&log_buffer_mutex);
     pthread_cond_signal(&log_buffer_cond);
     pthread_mutex_unlock(&log_buffer_mutex);
+
+    int val = 0;
+    if ((val = pthread_join(log_writer_id, NULL) != 0)) {
+        fprintf(stderr, "ERROR: couldn't join log writer thread. Error: %d", val);
+    }
+
+#ifdef DEBUG
+    printf("cleanup 2\n");
+#endif
 
     if (log_file != NULL) {
         if (fclose(log_file) != 0) {
             fprintf(stderr, "ERROR: couldn't close log file. Error: %s\n", strerror(errno));
         }
     }
+
+#ifdef DEBUG
+    printf("cleanup 3\n");
+#endif
 }
 
 void* set_write_log_buffer_id(void* arg) {
@@ -89,25 +106,46 @@ void* write_log_buffer(void* arg) {
     }
 
     pthread_mutex_lock(&log_buffer_mutex);
+#ifdef DEBUG
+    printf("write wait\n");
+#endif
     pthread_cond_wait(&log_buffer_cond, &log_buffer_mutex);
+#ifdef DEBUG
+    printf("past wait\n");
+#endif
     pthread_mutex_unlock(&log_buffer_mutex);
-    pthread_mutex_lock(&log_writer_terminate_mutex);
     if (log_writer_terminate == true) {
         pthread_mutex_unlock(&log_writer_terminate_mutex);
-        return (void*)-1;
+#ifdef DEBUG
+        printf("should terminate\n");
+#endif
+        return (void*)-2; // request immediate termination
     }
     pthread_mutex_unlock(&log_writer_terminate_mutex);
     pthread_mutex_lock(&log_buffer_mutex);
     while (log_buffer != NULL) {
         struct buffer* temp = log_buffer->next;
-        fwrite(log_buffer->value, sizeof(char), log_buffer->valuelen, log_file);
+
+        if (fwrite(log_buffer->value, sizeof(char), log_buffer->valuelen, log_file) != log_buffer->valuelen) {
+            fprintf(stderr, "ERROR: couldn't write the entire %ld bytes to log file. Error: %s", log_buffer->valuelen, strerror(errno));
+            break;
+        }
+
+        if (fwrite("\n", sizeof(char), 1, log_file) != 1) {
+            fprintf(stderr, "ERROR: couldn't write the the newline character to log file. Error: %s", strerror(errno));
+            break;
+        }
+
         arena_free_memory(filewriter_arena, log_buffer->value);
         arena_free_memory(filewriter_arena, log_buffer);
+
         log_buffer = temp;
     }
+
     if (fflush(log_file) != 0) {
         fprintf(stderr, "ERROR: couldn't flush log file. Error: %s\n", strerror(errno));
     }
+
     pthread_mutex_unlock(&log_buffer_mutex);
 
     return NULL;

@@ -11,10 +11,12 @@
 #include <errno.h>
 #include <time.h>
 
-#define PORT "8222"
-#define DEBUG
-#define SHOW_PROPER_USAGE(program) printf("Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", program)
-#define MAXTHREADS 5
+#undef DEBUG
+#define SHOW_PROPER_USAGE(program) \
+    printf( \
+        "Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", \
+        program)
+#define MAXTHREADS 10
 
 struct context {
     char* port;
@@ -141,7 +143,7 @@ void terminate_failure(void) {
 
 void terminate(int sig) {    
     pthread_mutex_lock(&terminate_mutex);
-    close_socket(sockfd, 10);
+    close_socket(sockfd, SOCKET_CLOSE_MAXTRIES);
     filewriter_cleanup();
     teardown_thread_pool();
     arena_cleanup();
@@ -220,6 +222,8 @@ int main(int argc, char *argv[]) {
     }
 
     listen_on_socket(sockfd);
+
+    printf("Service was started, use 'kill -SIGUSR1 <pid>' to stop the server\n");
 
     if (thread_pool_accept_conn_socket(sockfd) != 0) {
         printf("Something went bad, this should never return\n");

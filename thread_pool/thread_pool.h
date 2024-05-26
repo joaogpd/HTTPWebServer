@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "../arena/arena.h"
 
-#define DEBUG
+#undef DEBUG
 
 typedef void*(*thread_task_t)(void*);
 
@@ -47,6 +47,7 @@ bool is_thread_pool_spawned(void);
 int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_task_t prelude, 
                             void* arg, execution_mode_t mode, int mode_counter, 
                             bool arena_allocated_arg, arena_t arena_id_arg);
+void remove_thread(pthread_t id);
 void teardown_thread_pool(void);
 
 #endif

@@ -11,13 +11,16 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/time.h>
 #include "../thread_pool/thread_pool.h"
+#include "../filewriter/filewriter.h"
 
 #undef DEBUG
 
 #define LISTEN_BACKLOG 100
 #define MAX_MSG_SIZE 1024
 #define MAX_SOCK_THREADS 3
+#define SOCKET_CLOSE_MAXTRIES 1
 #define THREAD_TIMEOUT_COUNTER 1
 #define THREAD_TIMEOUT_TIMER 2000 // microseconds
 #define BUSY_MSG "Server is busy, try again later\n"
