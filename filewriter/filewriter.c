@@ -103,6 +103,9 @@ void* write_log_buffer(void* arg) {
         arena_free_memory(filewriter_arena, log_buffer);
         log_buffer = temp;
     }
+    if (fflush(log_file) != 0) {
+        fprintf(stderr, "ERROR: couldn't flush log file. Error: %s\n", strerror(errno));
+    }
     pthread_mutex_unlock(&log_buffer_mutex);
 
     return NULL;
