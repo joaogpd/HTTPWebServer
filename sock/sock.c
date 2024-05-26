@@ -274,7 +274,9 @@ int thread_pool_accept_conn_socket(int sockfd) {
                     THREAD_TIMEOUT_COUNTER);
 #endif
                 write(*new_sockfd_heap, BUSY_MSG, sizeof(BUSY_MSG));
-                close(*new_sockfd_heap);
+                if (close(*new_sockfd_heap) != 0) {
+                    fprintf(stderr, "ERROR: couldn't close accepted socket fd. Error: %s\n", strerror(errno));
+                }
                 arena_free_memory(arena_sock, new_sockfd_heap);
                 break;
             }

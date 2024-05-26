@@ -156,6 +156,11 @@ static void* new_thread_wait(void* arg) {
                         if (thread->arena_allocated_arg) {
                             arena_free_memory(thread->arena_id_arg, arg);
                         }
+
+                        if (thread->cleanup != NULL) {
+                            thread->cleanup(thread->arg);
+                        }
+
                         break;
                     }
 
@@ -179,6 +184,11 @@ static void* new_thread_wait(void* arg) {
                         if (thread->arena_allocated_arg) {
                             arena_free_memory(thread->arena_id_arg, arg);
                         }
+
+                        if (thread->cleanup != NULL) {
+                            thread->cleanup(thread->arg);
+                        }
+
                         break;
                     }
 

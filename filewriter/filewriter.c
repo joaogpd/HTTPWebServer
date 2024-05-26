@@ -68,7 +68,9 @@ void filewriter_cleanup(void) {
     pthread_mutex_unlock(&log_buffer_mutex);
 
     if (log_file != NULL) {
-        fclose(log_file);
+        if (fclose(log_file) != 0) {
+            fprintf(stderr, "ERROR: couldn't close log file. Error: %s\n", strerror(errno));
+        }
     }
 }
 
@@ -83,7 +85,7 @@ void* set_write_log_buffer_id(void* arg) {
 void* write_log_buffer(void* arg) {
     if (log_file == NULL) {
         fprintf(stderr, "ERROR: log file hasn't been opened\n");
-        return NULL;
+        return (void*)-1; // since no log file has been opened, we can free up thread
     }
 
     pthread_mutex_lock(&log_buffer_mutex);
