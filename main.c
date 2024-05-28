@@ -16,7 +16,7 @@
     printf( \
         "Usage: %s -p --port <port> [-l --log <filename>] [-s --statistics <filename>] [-b --background] [-r --root <path>]\n", \
         program)
-#define MAXTHREADS 10
+#define MAXTHREADS 5
 
 struct context {
     char* port;
@@ -129,9 +129,15 @@ void show_global_context(void) {
 }
 
 void terminate_failure(void) {
-    pthread_mutex_lock(&terminate_mutex);
+    int locked = pthread_mutex_trylock(&terminate_mutex);
+    if (locked != 0) {
+        fprintf(stderr, 
+            "ERROR: couldn't get lock for termination. Error: %s\n", 
+            strerror(errno));
+        return;
+    }
     if (sockfd != -1) {
-        close_socket(sockfd, 10);
+        close_socket(sockfd, SOCKET_CLOSE_MAXTRIES);
     }
     filewriter_cleanup(NULL);
     teardown_thread_pool();
@@ -142,7 +148,13 @@ void terminate_failure(void) {
 }
 
 void terminate(int sig) {    
-    pthread_mutex_lock(&terminate_mutex);
+    int locked = pthread_mutex_trylock(&terminate_mutex);
+    if (locked != 0) {
+        fprintf(stderr, 
+            "ERROR: couldn't get lock for termination. Error: %s\n", 
+            strerror(errno));
+        return;
+    }
     close_socket(sockfd, SOCKET_CLOSE_MAXTRIES);
     filewriter_cleanup(NULL);
     teardown_thread_pool();

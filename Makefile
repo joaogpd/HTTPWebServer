@@ -1,14 +1,14 @@
 sock: sock/sock.c
-	gcc -Wall -g -c sock.o sock/sock.c
+	gcc -Wall -g -c sock.o sock/sock.c -lpthread
 
 arena: arena/arena.c
-	gcc -Wall -g -c arena.o arena/arena.c
+	gcc -Wall -g -c arena.o arena/arena.c -lpthread
 
 thread_pool: thread_pool/thread_pool.c
-	gcc -Wall -g -c thread_pool.o thread_pool/thread_pool.c
+	gcc -Wall -g -c thread_pool.o thread_pool/thread_pool.c -lphtread
 
 filewriter: filewriter/filewriter.c
-	gcc -Wall -g -c filewriter.o filewriter/filewriter.c
+	gcc -Wall -g -c filewriter.o filewriter/filewriter.c -lphtread
 
 object: 
 	make sock
@@ -25,7 +25,7 @@ main:
 
 build:
 	make object
-	gcc -Wall -g -o main.out main.c *.o
+	gcc -Wall -g -o main.out main.c *.o -lpthread
 	rm *.o
 	
 gdb:

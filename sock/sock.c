@@ -89,7 +89,7 @@ struct addrinfo* getsockaddr_from_host(struct host* host) {
     if (error != 0) {
         if (error == EAI_SYSTEM) {
             fprintf(stderr, 
-            "ERROR: couldn't get socket address from host. 'gai' error: %s. Error: %s\n", 
+            "ERROR: couldn't get socket address from host. 'getaddrinfo' error: %s. Error: %s\n", 
                     gai_strerror(error),
                     strerror(errno));
         } else {
@@ -188,9 +188,10 @@ void* thread_read_socket(void* sockfd) {
                 return (void*)-1;
             }
 
-// #ifdef DEBUG
-            printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
-// #endif
+// // #ifdef DEBUG
+//             printf("Got message of size %d bytes from %s:%s: %s\n", byte_count, hostname, servname, data);
+// // #endif
+            printf("Got message of size %d bytes from %s:%s\n", byte_count, hostname, servname);
             char log_message[MAX_MSG_SIZE] = {0};
             strcat(log_message, "Requisition from ");
             strcat(log_message, servname);
@@ -316,9 +317,9 @@ int thread_pool_accept_conn_socket(int sockfd) {
 
         while ((error = request_thread_from_pool(thread_read_socket, thread_close_socket, NULL, 
                                                 (void*)new_sockfd_heap, FOREVER, 0, true, arena_sock)) != 0) {
-#ifdef DEBUG
+// #ifdef DEBUG
             printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
-#endif
+// #endif
             usleep(THREAD_TIMEOUT_TIMER);
             timeout_counter++;
             if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
