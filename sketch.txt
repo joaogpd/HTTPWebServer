@@ -1,7 +1,0 @@
-Rough sketch of what application should be like
-Get arguments from command line:
-- port
-- log file
-- statistic file
-- run on background
-- 
