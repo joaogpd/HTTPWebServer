@@ -176,7 +176,7 @@ static void* new_thread_wait(void* arg) {
                         }
 
                         if (thread->cleanup != NULL) {
-                            thread->cleanup(retval);
+                            thread->cleanup(thread->arg);
                         }
 
                         if (retval == (void*)-1) {
