@@ -25,7 +25,7 @@ main:
 
 build:
 	make object
-	gcc -Wall -o main.out main.c *.o
+	gcc -Wall -g -o main.out main.c *.o
 	rm *.o
 	
 gdb:

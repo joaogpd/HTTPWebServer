@@ -1,7 +1,7 @@
 #ifndef FILEWRITER_H
 #define FILEWRITER_H
 
-#undef DEBUG
+#define DEBUG
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,13 +30,14 @@ FILE* open_file(char* name, char* mode);
 // Initialize the filewriter module by opening the appropriate files.
 int filewriter_init(char* log_filename, char* stats_filename);
 // Cleanup module.
-void filewriter_cleanup(void);
+void* filewriter_cleanup(void* arg);
 // Write all the statistics collected throughout execution to a file.
 void write_stats_file(void);
 // Produce a stats buffer entry.
 void* produce_stats_entry(void* arg);
 // Initialize id of thread responsible for writing to buffer.
 void* set_write_log_buffer_id(void* arg);
+void reset_write_log_buffer_id(void);
 // Write to log file from buffer.
 void* write_log_buffer(void* arg);
 // Produce a log buffer entry.

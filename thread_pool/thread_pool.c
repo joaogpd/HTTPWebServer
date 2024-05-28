@@ -176,7 +176,7 @@ static void* new_thread_wait(void* arg) {
                         }
 
                         if (thread->cleanup != NULL) {
-                            thread->cleanup(thread->arg);
+                            thread->cleanup(retval);
                         }
 
                         if (retval == (void*)-1) {
@@ -267,7 +267,13 @@ void remove_thread(pthread_t id) {
     }
 
     if (thread != NULL) {
-        prev->next = thread->next;
+        if (prev != NULL) {
+            prev->next = thread->next;
+        } else if (thread_pool->first != thread_pool->last) { // the thread is the first in the list
+            thread_pool->first = thread->next;
+        } else  { // the thread is the only one in the list
+            thread_pool->first = thread_pool->last = NULL;
+        }
     }
 
     pthread_mutex_unlock(&thread_pool_mutex);
@@ -450,7 +456,7 @@ int request_thread_from_pool(thread_task_t task, thread_task_t cleanup, thread_t
 
     if (thread == NULL) {
         // NON FATAL ERROR -> user can wait until a thread is available -> can't be sent to buffer because no thread is available yet
-        fprintf(stderr, "ERROR: no thread is currently available\n");
+        fprintf(stderr, "ERROR: no thread is currently available.\n");
         pthread_mutex_unlock(&thread_pool_mutex);
         return -3;
     }

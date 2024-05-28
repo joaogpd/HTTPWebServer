@@ -15,7 +15,7 @@
 #include "../thread_pool/thread_pool.h"
 #include "../filewriter/filewriter.h"
 
-#undef DEBUG
+#define DEBUG
 
 #define LISTEN_BACKLOG 100
 #define MAX_MSG_SIZE 1024

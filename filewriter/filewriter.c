@@ -1,4 +1,5 @@
 #include "filewriter.h"
+#include <linux/limits.h>
 
 struct stats* stats_buffer = NULL;
 struct buffer* log_buffer = NULL;
@@ -58,7 +59,12 @@ int filewriter_init(char* log_filename, char* stats_filename) {
     return 0;
 }
 
-void filewriter_cleanup(void) {
+void* filewriter_cleanup(void* arg) {
+    if (log_file == NULL) {
+        reset_write_log_buffer_id();
+        return NULL; // shouldn't wait for thread to terminate
+    }
+
     pthread_mutex_lock(&log_writer_terminate_mutex);
     log_writer_terminate = true;
     pthread_mutex_unlock(&log_writer_terminate_mutex);
@@ -72,9 +78,13 @@ void filewriter_cleanup(void) {
     pthread_mutex_unlock(&log_buffer_mutex);
 
     int val = 0;
-    if ((val = pthread_join(log_writer_id, NULL) != 0)) {
-        fprintf(stderr, "ERROR: couldn't join log writer thread. Error: %d", val);
+    pthread_mutex_lock(&log_writer_id_mutex);
+    if (log_writer_id != -1) {
+        if ((val = pthread_join(log_writer_id, NULL) != 0)) {
+            fprintf(stderr, "ERROR: couldn't join log writer thread. Error: %d", val);
+        }
     }
+    pthread_mutex_unlock(&log_writer_id_mutex);
 
 #ifdef DEBUG
     printf("cleanup 2\n");
@@ -89,12 +99,16 @@ void filewriter_cleanup(void) {
 #ifdef DEBUG
     printf("cleanup 3\n");
 #endif
+
+    return NULL;
 }
 
 void* set_write_log_buffer_id(void* arg) {
     pthread_mutex_lock(&log_writer_id_mutex);
     log_writer_id = pthread_self();
     pthread_mutex_unlock(&log_writer_id_mutex);
+
+    printf("My id is: %ld\n", pthread_self());
     
     return NULL;
 }
@@ -114,6 +128,7 @@ void* write_log_buffer(void* arg) {
     printf("past wait\n");
 #endif
     pthread_mutex_unlock(&log_buffer_mutex);
+    pthread_mutex_lock(&log_writer_terminate_mutex);
     if (log_writer_terminate == true) {
         pthread_mutex_unlock(&log_writer_terminate_mutex);
 #ifdef DEBUG
@@ -152,6 +167,12 @@ void* write_log_buffer(void* arg) {
     pthread_mutex_unlock(&log_buffer_mutex);
 
     return NULL;
+}
+
+void reset_write_log_buffer_id(void) {
+    pthread_mutex_lock(&log_writer_id_mutex);
+    log_writer_id = -1;
+    pthread_mutex_unlock(&log_writer_id_mutex);
 }
 
 void* produce_buffer_entry(void* arg) {

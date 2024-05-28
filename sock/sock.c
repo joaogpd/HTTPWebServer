@@ -194,6 +194,10 @@ void* thread_read_socket(void* sockfd) {
             char log_message[MAX_MSG_SIZE] = {0};
             strcat(log_message, "Requisition from ");
             strcat(log_message, servname);
+            pthread_t id = pthread_self();
+            char pthread_id[50] = {0};
+            sprintf(pthread_id, " from thread %ld", id);
+            strcat(log_message, pthread_id); 
 
             struct buffer* buffer_entry = arena_request_memory(arena_sock, sizeof(struct buffer));
             if (buffer_entry == NULL) {
@@ -219,8 +223,11 @@ void* thread_read_socket(void* sockfd) {
             buffer_entry->valuelen = strlen(log_message);
 
             // we are passing false, although arg is arena allocated because freeing it is more complicated, should be done elsewhere
-            request_thread_from_pool(produce_buffer_entry, free_buffer_entry, 
-                NULL, (void*)buffer_entry, ONCE, 0, false, -1); 
+            if (request_thread_from_pool(produce_buffer_entry, free_buffer_entry, 
+                NULL, (void*)buffer_entry, ONCE, 0, false, -1) == -3) {
+                    fprintf(stderr, 
+                        "ERROR: no thread is available for log writer\n");
+            } 
 
 #ifdef DEBUG
             printf("requested to produce message\n");
@@ -308,26 +315,30 @@ int thread_pool_accept_conn_socket(int sockfd) {
 #endif
 
         while ((error = request_thread_from_pool(thread_read_socket, thread_close_socket, NULL, 
-                                                (void*)new_sockfd_heap, FOREVER, 0, true, arena_sock) != 0)) {
+                                                (void*)new_sockfd_heap, FOREVER, 0, true, arena_sock)) != 0) {
 #ifdef DEBUG
             printf("ERROR: no threads available, will try again in %dms\n", THREAD_TIMEOUT_TIMER);
 #endif
             usleep(THREAD_TIMEOUT_TIMER);
             timeout_counter++;
             if (timeout_counter > THREAD_TIMEOUT_COUNTER) {
-#ifdef DEBUG
-                printf(
+                fprintf(stderr,
                     "ERROR: couldn't find a thread for the available file descriptor after trying %d times\n", 
                     THREAD_TIMEOUT_COUNTER);
-#endif
                 write(*new_sockfd_heap, BUSY_MSG, sizeof(BUSY_MSG));
                 if (close(*new_sockfd_heap) != 0) {
-                    fprintf(stderr, "ERROR: couldn't close accepted socket fd. Error: %s\n", strerror(errno));
+                    fprintf(stderr, 
+                        "ERROR: couldn't close accepted socket fd. Error: %s\n", 
+                        strerror(errno));
+                } else {
+                    printf("Closed socket %d\n", *new_sockfd_heap);
                 }
                 arena_free_memory(arena_sock, new_sockfd_heap);
                 break;
             }
         }
+
+        printf("Why am I here\n");
     }
 
     return 0;

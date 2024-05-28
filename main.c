@@ -133,7 +133,7 @@ void terminate_failure(void) {
     if (sockfd != -1) {
         close_socket(sockfd, 10);
     }
-    filewriter_cleanup();
+    filewriter_cleanup(NULL);
     teardown_thread_pool();
     arena_cleanup();
     free_global_context();
@@ -144,7 +144,7 @@ void terminate_failure(void) {
 void terminate(int sig) {    
     pthread_mutex_lock(&terminate_mutex);
     close_socket(sockfd, SOCKET_CLOSE_MAXTRIES);
-    filewriter_cleanup();
+    filewriter_cleanup(NULL);
     teardown_thread_pool();
     arena_cleanup();
     free_global_context();
