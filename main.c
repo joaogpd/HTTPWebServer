@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <errno.h>
+#include <time.h>
 #include <signal.h>
 
 #define TIMESTAMP_MSG_SIZE 30
@@ -34,16 +35,17 @@ typedef struct log_message {
     struct log_message *next;
 } LogMessage;
 
+typedef struct stats_message {
+    char *file_type;
+    char *file_name;
+    struct stats_message *next;
+} StatsMessage;
+
 typedef struct client {
     int sockfd;
     pthread_t thread_id;
     struct client *next;
 } Client;
-
-typedef struct http_data {
-    char *path;
-    char *timestamp;
-} HTTPData;
 
 pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct client *connected_clients = NULL;
@@ -52,6 +54,9 @@ pthread_mutex_t log_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t new_log_data = PTHREAD_COND_INITIALIZER;
 struct log_message *log_buffer = NULL;
 pthread_t log_file_writer_id = -1;
+
+pthread_mutex_t stats_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct stats_message *stats_buffer = NULL;
 
 FILE *log_file = NULL;
 
@@ -206,7 +211,9 @@ void* log_message_producer(void* msg) {
 
     strcpy(message->timestamped_message, (char*)msg);
 
-    message->message_len = strlen(msg); 
+    message->message_len = strlen((char*)msg); 
+
+    free(msg);
 
     pthread_mutex_lock(&log_buffer_mutex);
 
@@ -348,6 +355,58 @@ int create_tcp_socket(int domain) {
     return sockfd;
 }
 
+char* get_file_path(char* request) {
+    if (request == NULL) {
+        fprintf(stderr, "ERROR: file path was NULL\n");
+        return NULL;
+    }
+
+    char current_char;
+    current_char = *request;
+
+    char* expected_request = "GET";
+
+    while (current_char != ' ') {
+        if (current_char != *expected_request) {
+            fprintf(stderr, "ERROR: malformed request\n");
+            return NULL;
+        }
+        request++;
+        expected_request++;
+        current_char = *request;
+    }
+
+    request++;
+    char *file_path_start = request;
+    int counter = 0;
+
+    current_char = *request;
+
+    while (current_char !=  ' ') {
+        request++;
+        expected_request++;
+        current_char = *request;
+        counter++;
+    }
+
+    char *file_path = (char*)malloc(sizeof(char) * (counter + 1));
+    if (file_path == NULL) {
+        fprintf(stderr, "ERROR: couldn't allocate memory for file path\n");
+        return NULL;
+    }
+
+    int up_counter = 0;
+
+    while (counter--) {
+        file_path[up_counter] = file_path_start[up_counter];
+        up_counter++;
+    }
+
+    file_path[up_counter] = '\0';
+
+    return file_path;
+}
+
 void *client_thread(void *arg) {
     int client_sockfd = *((int*)arg);
     free(arg); // arg is heap allocated
@@ -359,6 +418,8 @@ void *client_thread(void *arg) {
     }
 
     while (1) {
+        pthread_t id;
+
         fd_set readfds, writefds, exceptfds;
         FD_ZERO(&readfds);
         FD_SET(client_sockfd, &readfds);
@@ -384,8 +445,37 @@ void *client_thread(void *arg) {
                 break;
             }
             
-            pthread_t id;
-            pthread_create(&id, NULL, log_message_producer, data);
+            // need to get timestamp
+
+            time_t timestamp = time(NULL);
+            char* timestamp_str = asctime(localtime(&timestamp));
+            if (timestamp_str == NULL) {
+                pthread_create(&id, NULL, log_message_producer, (void*)"Missing timestamp");
+                continue;
+            }
+
+            timestamp_str[strlen(timestamp_str) - 1] = '\0';
+
+            char* file_path = get_file_path(data);
+            if (file_path == NULL) {
+                pthread_create(&id, NULL, log_message_producer, (void*)"Malformed query");
+                continue;
+            }
+
+            char* message = (char*)malloc(sizeof(char) * (strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+            if (message == NULL) {
+                fprintf(stderr, "ERROR: couldn't allocate memory for message\n");
+                continue;
+            }
+
+            strcpy(message, "");
+            strcat(message, file_path);
+            strcat(message, " - ");
+            strcat(message, timestamp_str);
+
+            free(file_path);
+
+            pthread_create(&id, NULL, log_message_producer, message);
         }
 
         pthread_testcancel();
