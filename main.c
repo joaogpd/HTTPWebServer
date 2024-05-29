@@ -28,22 +28,34 @@ typedef struct context {
     bool background;
 } Context;
 
-typedef struct log_buffer {
-    char *message;
+typedef struct log_message {
+    char *timestamped_message;
     size_t message_len;
-    char timestamp[TIMESTAMP_MSG_SIZE];
-} LogBuffer;
+    struct log_message *next;
+} LogMessage;
 
 typedef struct client {
     int sockfd;
     pthread_t thread_id;
-    struct client* next;
+    struct client *next;
 } Client;
 
-pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct client* connected_clients = NULL;
+typedef struct http_data {
+    char *path;
+    char *timestamp;
+} HTTPData;
 
-struct context* application_context = NULL; // this may be unnecessary
+pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+struct client *connected_clients = NULL;
+
+pthread_mutex_t log_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t new_log_data = PTHREAD_COND_INITIALIZER;
+struct log_message *log_buffer = NULL;
+pthread_t log_file_writer_id = -1;
+
+FILE *log_file = NULL;
+
+struct context *application_context = NULL; // this may be unnecessary
 int server_sockfd = -1;
 
 void free_application_context(void) {
@@ -141,8 +153,68 @@ int parse_args(int argc, char *argv[]) {
 }
 
 // Consumes data from log buffer
-void* log_file_writer(void* arg) {
+void* log_file_writer(void* log_filename) {
+    log_file_writer_id = pthread_self();
 
+    log_file = fopen((char*)log_filename, "a");
+    if (log_file == NULL) {
+        fprintf(stderr, "FATAL ERROR: couldn't open log file. Error: %s\n", strerror(errno));
+        log_file_writer_id = -1;
+        return NULL;
+    }
+
+    while (1) {
+        pthread_mutex_lock(&log_buffer_mutex);
+        pthread_cond_wait(&new_log_data, &log_buffer_mutex);
+        pthread_testcancel();
+
+        struct log_message *message = log_buffer;
+        while (message != NULL) {
+            struct log_message *temp = message->next;
+            
+            fwrite(message->timestamped_message, sizeof(char), message->message_len, log_file);
+            fwrite("\n", sizeof(char), 1, log_file);
+            
+            free(message->timestamped_message);
+            free(message);
+            message = temp;
+
+            log_buffer = message;
+        }
+
+        fflush(log_file);
+
+        pthread_mutex_unlock(&log_buffer_mutex);
+    }
+
+    return NULL;
+}
+
+void* log_message_producer(void* msg) {
+    struct log_message *message = (struct log_message*)malloc(sizeof(struct log_message));
+    if (message == NULL) {
+        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for log message. Error: %s\n", strerror(errno));    
+        return NULL;
+    }
+
+    message->timestamped_message = (char*)malloc(sizeof(char) * (strlen(msg) + 1));
+    if (message->timestamped_message == NULL) {
+        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for timestamped_message. Error: %s\n", strerror(errno));   
+        free(message); 
+        return NULL;
+    }
+
+    strcpy(message->timestamped_message, (char*)msg);
+
+    message->message_len = strlen(msg); 
+
+    pthread_mutex_lock(&log_buffer_mutex);
+
+    message->next = log_buffer;
+    log_buffer = message;
+
+    pthread_cond_signal(&new_log_data);
+    pthread_mutex_unlock(&log_buffer_mutex);
 
     return NULL;
 }
@@ -196,29 +268,69 @@ int insert_client(int sockfd) {
 
 void close_clients(void) {
     pthread_mutex_lock(&connected_clients_mutex);
+
     struct client* client = connected_clients;
     while (client != NULL) {
         struct client* temp = client->next;
+
         pthread_cancel(client->thread_id);
+
         int error = 0;
         if ((error = pthread_join(client->thread_id, NULL)) != 0) {
             fprintf(stderr, "ERROR: couldn't join thread. Error: %d\n", error);
         }
+
         close(client->sockfd);
         free(client);
+
         client = temp;
     }
+
     pthread_mutex_unlock(&connected_clients_mutex);
+}
+
+void free_log_buffer(void) {
+    pthread_mutex_lock(&log_buffer_mutex);
+
+    struct log_message *message = log_buffer;
+    while (message != NULL) {
+        struct log_message *temp = message->next;
+
+        free(message->timestamped_message);
+        free(message);
+
+        message = temp; 
+    }
+
+    pthread_mutex_unlock(&log_buffer_mutex);
+}
+
+void terminate_log_file_writer(void) {
+    if (log_file_writer_id != -1) {
+        pthread_cancel(log_file_writer_id);
+        int error = 0;
+        if ((error = pthread_join(log_file_writer_id, NULL)) != 0) {
+            fprintf(stderr, "ERROR: couldn't join thread. Error: %d\n", error);
+        }
+    }
 }
 
 void terminate(int sig) {
     free_application_context();
     close_clients();
+    free_log_buffer();
+
     if (server_sockfd != -1) {
         if (close(server_sockfd) != 0) {
             fprintf(stderr, "FATAL ERROR: couldn't close server socket. Error: %s\n", strerror(errno));
         }
     }
+
+    terminate_log_file_writer();
+    if (log_file != NULL) {
+        fclose(log_file);
+    }
+
     _exit(EXIT_SUCCESS);
 }
 
@@ -236,7 +348,7 @@ int create_tcp_socket(int domain) {
     return sockfd;
 }
 
-void* client_thread(void* arg) {
+void *client_thread(void *arg) {
     int client_sockfd = *((int*)arg);
     free(arg); // arg is heap allocated
 
@@ -271,6 +383,9 @@ void* client_thread(void* arg) {
             if (read(client_sockfd, data, sizeof(data)) == 0) {
                 break;
             }
+            
+            pthread_t id;
+            pthread_create(&id, NULL, log_message_producer, data);
         }
 
         pthread_testcancel();
@@ -365,7 +480,11 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "FATAL ERROR: couldn't parse args\n");
         return 1;
     }
-    
+
+    if (application_context->log_filename != NULL) {
+        pthread_create(&log_file_writer_id, NULL, log_file_writer, application_context->log_filename);
+    }
+
     start_server(application_context->port, AF_INET);
 
     // need to keep path name and stats file name throughout execution, but log 
