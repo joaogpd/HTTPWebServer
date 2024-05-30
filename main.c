@@ -106,7 +106,7 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
     Content-Type: ";
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
-char http_ok_response_pt3[] = "\r\nConnection: closekeep\r\n \
+char http_ok_response_pt3[] = "\r\nConnection: keep-alive\r\n\
     \r\n\r\n";
  
 void free_application_context(void) {
@@ -780,7 +780,6 @@ void *client_thread(void *arg) {
             }
 
             write(client_sockfd, http_response, sizeof(char) * http_response_len);
-            write(client_sockfd, "\n", sizeof(char) * 1);
 
             free(http_response);
             free(file_response->file_content);
@@ -815,6 +814,14 @@ int start_server(char *port, int domain) {
     int enable_reuseaddr = 1;
     if (setsockopt(server_sockfd, SOL_SOCKET, SO_REUSEADDR, (void*)&enable_reuseaddr, sizeof(int)) != 0) {
         fprintf(stderr, "FATAL ERROR: couldn't set socket to reuse address. Error: %s\n", strerror(errno));
+        return -1;
+    }
+
+    int enable_nodelay = 1;
+    
+    // Enable TCP_NODELAY
+    if (setsockopt(server_sockfd, IPPROTO_TCP, TCP_NODELAY, &enable_nodelay, sizeof(enable_nodelay)) != 0) {
+        fprintf(stderr, "FATAL ERROR: couldn't set socket to not delay. Error: %s\n", strerror(errno));
         return -1;
     }
 
@@ -891,6 +898,8 @@ int main(int argc, char *argv[]) {
     printf("Server started. Exit with 'kill -SIGUSR1 <pid>'.\n");
 
     start_server(application_context->port, AF_INET);
+
+    terminate(0);
 
     return 0;
 }
