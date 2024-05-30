@@ -12,6 +12,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <signal.h>
 
 #define TIMESTAMP_MSG_SIZE 30
@@ -104,7 +106,7 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
     Content-Type: ";
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
-char http_ok_response_pt3[] = "\r\nConnection: keep-alive\r\n \
+char http_ok_response_pt3[] = "\r\nConnection: closekeep\r\n \
     \r\n\r\n";
  
 void free_application_context(void) {
@@ -773,9 +775,12 @@ void *client_thread(void *arg) {
             memcpy(http_response + (http_response_len - file_response->file_size - 1),
                  file_response->file_content, file_response->file_size);
 
-            produce_stats_message(type);
+            if (application_context->stats_filename != NULL) {
+                produce_stats_message(type);
+            }
 
             write(client_sockfd, http_response, sizeof(char) * http_response_len);
+            write(client_sockfd, "\n", sizeof(char) * 1);
 
             free(http_response);
             free(file_response->file_content);
@@ -883,15 +888,9 @@ int main(int argc, char *argv[]) {
         pthread_create(&log_file_writer_id, NULL, log_file_writer, application_context->log_filename);
     }
 
+    printf("Server started. Exit with 'kill -SIGUSR1 <pid>'.\n");
+
     start_server(application_context->port, AF_INET);
-
-    // need to keep path name and stats file name throughout execution, but log 
-    // can be freed after opening the file
-
-    // create one thread to periodically check the log buffer structure
-    // create one thread to block on select -> this can be done (and probably should be done) in the main thread
-    
-    // one should keep track of all active threads, which should be terminate-able 
 
     return 0;
 }
