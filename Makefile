@@ -1,5 +1,5 @@
 build:
-	gcc -Wall -o main main.c -pthread
+	gcc -Wall -g -o main main.c -pthread
 
 clean: 
 	- rm *.o 
