@@ -14,7 +14,18 @@ int main(int argc, char *argv[]) {
     // parse command line arguments
     if (parse_args(argc, argv) != 0) {
         fprintf(stderr, "FATAL ERROR: couldn't parse args\n");
+        terminate(0);
         return 1;
+    }
+
+    if (application_context->background) {
+        if (daemon(1, 1) != 0) {
+            fprintf(stderr, 
+                "FATAL ERROR: couldn't daemonize server. Error: %s\n", 
+                strerror(errno));
+            terminate(0);
+            return 1;
+        }
     }
 
     if (application_context->log_filename != NULL) {
