@@ -62,11 +62,49 @@ clients:
 	make remove_client
 	make close_clients
 
+response_file_handler_vars:
+	gcc -Wall -c response_file_handler_vars.o response_file_handler_vars.c
+
+get_file_content:
+	gcc -Wall -c get_file_content.o get_file_content.c 
+
+get_file_path:
+	gcc -Wall -c get_file_path.o get_file_path.c
+
+get_file_type:
+	gcc -Wall -c get_file_type.o get_file_type.c
+
+response_file_handler:
+	make response_file_handler_vars
+	make get_file_content
+	make get_file_path
+	make get_file_type
+
+server_vars:
+	gcc -Wall -c server_vars.o server_vars.c
+
+create_tcp_socket:
+	gcc -Wall -c create_tcp_socket.o create_tcp_socket.c
+
+client_thread:
+	gcc -Wall -c client_thread.o client_thread.c
+
+start_server:
+	gcc -Wall -c start_server.o start_server.c
+
+server:
+	make server_vars
+	make create_tcp_socket
+	make client_thread
+	make start_server
+
 object:
 	make args
 	make log_file_handler
 	make stats_file_handler
 	make clients
+	make response_file_handler
+	make server
 
 clean-object:
 	- rm *.o

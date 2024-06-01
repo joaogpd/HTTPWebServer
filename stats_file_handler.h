@@ -6,14 +6,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-
-typedef enum {
-    IMAGE_JPEG = 0, 
-    IMAGE_PNG = 1, 
-    TEXT_HTML = 2, 
-    TEXT_CSS = 3, 
-    TEXT_PLAIN = 4
-} FileType;
+#include "response_file_handler.h"
 
 typedef struct stats_message {
     FileType type;
