@@ -6,7 +6,7 @@ object:
 
 build:
 	make object
-	gcc -Wall -g -o main main.c *.o -pthread
+	gcc -Wall -g -o main.out main.c *.o -pthread
 
 clean: 
 	- rm *.o 
