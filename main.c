@@ -17,6 +17,7 @@
 #include "args.h"
 #include "log_file_handler.h"
 #include "stats_file_handler.h"
+#include "clients.h"
 
 #define TIMESTAMP_MSG_SIZE 30
 #define MAX_BACKLOG 100
@@ -30,19 +31,10 @@ char content_type_array[][20] = {
     "text/plain"
 };
 
-typedef struct client {
-    int sockfd;
-    pthread_t thread_id;
-    struct client *next;
-} Client;
-
 typedef struct file_response {
     char *file_content;
     size_t file_size;
 } FileResponse;
-
-pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct client *connected_clients = NULL;
 
 int server_sockfd = -1;
 
@@ -67,76 +59,6 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
 char http_ok_response_pt3[] = "\r\nConnection: close\r\n\\r\n\r\n";
-
-void remove_client(int sockfd) {
-    pthread_mutex_lock(&connected_clients_mutex);
-
-    struct client* prev = NULL;
-    struct client* client = connected_clients;
-
-    while (client != NULL) {
-        if (client->sockfd == sockfd) {
-            break;
-        }
-        prev = client;
-        client = client->next;
-    }    
-
-    if (client != NULL) {
-        if (prev == NULL) {
-            connected_clients = client->next;
-        } else {
-            prev->next = client->next;
-        }
-
-        close(client->sockfd);
-        free(client);
-    }
-
-    pthread_mutex_unlock(&connected_clients_mutex);
-}
-
-int insert_client(int sockfd) {
-    struct client* client = (struct client*)malloc(sizeof(struct client));
-    if (client == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for client structure\n");
-        return -1;
-    }
-
-    client->sockfd = sockfd;
-    client->thread_id = pthread_self();
-    pthread_mutex_lock(&connected_clients_mutex);
-    client->next = connected_clients;
-
-    connected_clients = client;
-
-    pthread_mutex_unlock(&connected_clients_mutex);
-
-    return 0;
-}
-
-void close_clients(void) {
-    pthread_mutex_lock(&connected_clients_mutex);
-
-    struct client* client = connected_clients;
-    while (client != NULL) {
-        struct client* temp = client->next;
-
-        pthread_cancel(client->thread_id);
-
-        int error = 0;
-        if ((error = pthread_join(client->thread_id, NULL)) != 0) {
-            fprintf(stderr, "ERROR: couldn't join thread. Error: %d\n", error);
-        }
-
-        close(client->sockfd);
-        free(client);
-
-        client = temp;
-    }
-
-    pthread_mutex_unlock(&connected_clients_mutex);
-}
 
 void free_log_buffer(void) {
     pthread_mutex_lock(&log_buffer_mutex);

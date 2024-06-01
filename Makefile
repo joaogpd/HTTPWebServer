@@ -36,10 +36,29 @@ stats_file_handler:
 	make produce_stats_message
 	make show_stats
 
+clients_vars:
+	gcc -Wall -c clients_vars.o clients_vars.c -pthread
+
+insert_client:
+	gcc -Wall -c insert_client.o insert_client.c -pthread
+
+remove_client:
+	gcc -Wall -c remove_client.o remove_client.c -pthread
+
+close_clients:
+	gcc -Wall -c close_clients.o close_clients.c -pthread
+
+clients:
+	make clients_vars
+	make insert_client
+	make remove_client
+	make close_clients
+
 object:
 	make args
 	make log_file_handler
 	make stats_file_handler
+	make clients
 
 clean-object:
 	- rm *.o
