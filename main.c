@@ -15,6 +15,7 @@
 #include <netinet/tcp.h>
 #include <signal.h>
 #include "args.h"
+#include "log_file_handler.h"
 
 #define TIMESTAMP_MSG_SIZE 30
 #define MAX_BACKLOG 100
@@ -36,12 +37,6 @@ char content_type_array[][20] = {
     "text/plain"
 };
 
-typedef struct log_message {
-    char *timestamped_message;
-    size_t message_len;
-    struct log_message *next;
-} LogMessage;
-
 typedef struct stats_message {
     FileType type;
     struct stats_message *next;
@@ -61,15 +56,8 @@ typedef struct file_response {
 pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct client *connected_clients = NULL;
 
-pthread_mutex_t log_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t new_log_data = PTHREAD_COND_INITIALIZER;
-struct log_message *log_buffer = NULL;
-pthread_t log_file_writer_id = -1;
-
 pthread_mutex_t stats_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct stats_message *stats_buffer = NULL;
-
-FILE *log_file = NULL;
 
 int server_sockfd = -1;
 
@@ -94,81 +82,6 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
 char http_ok_response_pt3[] = "\r\nConnection: close\r\n\\r\n\r\n";
-
-// Consumes data from log buffer
-void* log_file_writer(void* log_filename) {
-    log_file_writer_id = pthread_self();
-
-    log_file = fopen((char*)log_filename, "a");
-    if (log_file == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't open log file. Error: %s\n", strerror(errno));
-        log_file_writer_id = -1;
-        return NULL;
-    }
-
-    while (1) {
-        pthread_mutex_lock(&log_buffer_mutex);
-        pthread_cond_wait(&new_log_data, &log_buffer_mutex);
-        pthread_testcancel();
-
-        struct log_message *message = log_buffer;
-        while (message != NULL) {
-            struct log_message *temp = message->next;
-            
-            fwrite(message->timestamped_message, sizeof(char), message->message_len, log_file);
-            fwrite("\n", sizeof(char), 1, log_file);
-
-#ifdef DEBUG
-            printf("Wrote message %s to file\n", message->timestamped_message);
-#endif        
-    
-            free(message->timestamped_message);
-            free(message);
-            message = temp;
-
-            log_buffer = message;
-        }
-
-        fflush(log_file);
-
-        pthread_mutex_unlock(&log_buffer_mutex);
-    }
-
-    return NULL;
-}
-
-void* log_message_producer(void* msg) {
-    struct log_message *message = (struct log_message*)malloc(sizeof(struct log_message));
-    if (message == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for log message. Error: %s\n", strerror(errno));    
-        return NULL;
-    }
-
-    message->timestamped_message = (char*)malloc(sizeof(char) * (strlen(msg) + 1));
-    if (message->timestamped_message == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for timestamped_message. Error: %s\n", strerror(errno));   
-        free(message); 
-        return NULL;
-    }
-
-    strcpy(message->timestamped_message, (char*)msg);
-
-    message->message_len = strlen((char*)msg); 
-
-    pthread_mutex_lock(&log_buffer_mutex);
-
-    message->next = log_buffer;
-    log_buffer = message;
-
-#ifdef DEBUG
-    printf("Produced message: %s\n", message->timestamped_message);
-#endif
-
-    pthread_cond_signal(&new_log_data);
-    pthread_mutex_unlock(&log_buffer_mutex);
-
-    return NULL;
-}
 
 void produce_stats_message(FileType type) {
     struct stats_message *message = (struct stats_message*)malloc(sizeof(struct stats_message));
