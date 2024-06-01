@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
+#include "application_context.h"
 
 #define TIMESTAMP_MSG_SIZE 30
 #define MAX_BACKLOG 100
@@ -39,14 +40,6 @@ char content_type_array[][20] = {
     "text/css", 
     "text/plain"
 };
-
-typedef struct context {
-    char *port;
-    char *log_filename;
-    char *stats_filename;
-    char *root_path;
-    bool background;
-} Context;
 
 typedef struct log_message {
     char *timestamped_message;
@@ -83,7 +76,6 @@ struct stats_message *stats_buffer = NULL;
 
 FILE *log_file = NULL;
 
-struct context *application_context = NULL; // this may be unnecessary
 int server_sockfd = -1;
 
 char http_404_response[] = "HTTP/1.1 404 Not Found\r\n \
@@ -107,17 +99,6 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
 char http_ok_response_pt3[] = "\r\nConnection: close\r\n\\r\n\r\n";
- 
-void free_application_context(void) {
-    if (application_context != NULL) {
-        free(application_context->port);
-        free(application_context->log_filename);
-        free(application_context->stats_filename);
-        free(application_context->root_path);
-    }
-    free(application_context);
-    application_context = NULL;
-}
 
 /**
  * This function parses command line arguments into a global structure
