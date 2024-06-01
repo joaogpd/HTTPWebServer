@@ -60,32 +60,6 @@ char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
 char http_ok_response_pt3[] = "\r\nConnection: close\r\n\\r\n\r\n";
 
-void free_log_buffer(void) {
-    pthread_mutex_lock(&log_buffer_mutex);
-
-    struct log_message *message = log_buffer;
-    while (message != NULL) {
-        struct log_message *temp = message->next;
-
-        free(message->timestamped_message);
-        free(message);
-
-        message = temp; 
-    }
-
-    pthread_mutex_unlock(&log_buffer_mutex);
-}
-
-void terminate_log_file_writer(void) {
-    if (log_file_writer_id != -1) {
-        pthread_cancel(log_file_writer_id);
-        int error = 0;
-        if ((error = pthread_join(log_file_writer_id, NULL)) != 0) {
-            fprintf(stderr, "ERROR: couldn't join thread. Error: %d\n", error);
-        }
-    }
-}
-
 void terminate(int sig) {
     close_clients();
     free_log_buffer();

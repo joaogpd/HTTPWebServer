@@ -17,10 +17,18 @@ log_file_writer:
 log_message_producer:
 	gcc -Wall -c log_message_producer.o log_message_producer.c -pthread
 
+free_log_buffer:
+	gcc -Wall -c free_log_buffer.o free_log_buffer.c -pthread
+
+terminate_log_file_writer:
+	gcc -Wall -c terminate_log_file_writer.o terminate_log_file_writer.c -pthread
+
 log_file_handler:
 	make log_file_handler_vars
 	make log_file_writer
 	make log_message_producer
+	make free_log_buffer
+	make terminate_log_file_writer
 
 stats_file_handler_vars:
 	gcc -Wall -c stats_file_handler_vars.o stats_file_handler_vars.c -pthread

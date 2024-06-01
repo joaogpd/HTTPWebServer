@@ -22,5 +22,7 @@ extern FILE *log_file;
 
 void* log_file_writer(void* log_filename);
 void* log_message_producer(void* msg);
+void free_log_buffer(void);
+void terminate_log_file_writer(void);
 
 #endif
