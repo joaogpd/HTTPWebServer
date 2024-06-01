@@ -16,18 +16,11 @@
 #include <signal.h>
 #include "args.h"
 #include "log_file_handler.h"
+#include "stats_file_handler.h"
 
 #define TIMESTAMP_MSG_SIZE 30
 #define MAX_BACKLOG 100
 #define MAX_MSG_SIZE 1000
-
-typedef enum {
-    IMAGE_JPEG = 0, 
-    IMAGE_PNG = 1, 
-    TEXT_HTML = 2, 
-    TEXT_CSS = 3, 
-    TEXT_PLAIN = 4
-} FileType;
 
 char content_type_array[][20] = {
     "image/jpeg", 
@@ -36,11 +29,6 @@ char content_type_array[][20] = {
     "text/css", 
     "text/plain"
 };
-
-typedef struct stats_message {
-    FileType type;
-    struct stats_message *next;
-} StatsMessage;
 
 typedef struct client {
     int sockfd;
@@ -55,9 +43,6 @@ typedef struct file_response {
 
 pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct client *connected_clients = NULL;
-
-pthread_mutex_t stats_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct stats_message *stats_buffer = NULL;
 
 int server_sockfd = -1;
 
@@ -82,79 +67,6 @@ char http_ok_response_pt1[] = "HTTP/1.1 200 OK\r\n \
 char http_ok_response_pt2[] = "; charset=UTF-8\r\n \
     Content-Length: ";
 char http_ok_response_pt3[] = "\r\nConnection: close\r\n\\r\n\r\n";
-
-void produce_stats_message(FileType type) {
-    struct stats_message *message = (struct stats_message*)malloc(sizeof(struct stats_message));
-    if (message == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for stats message\n");
-        return;
-    }
-
-    message->type = type;
-    
-    pthread_mutex_lock(&stats_buffer_mutex);
-
-    message->next = stats_buffer;
-    stats_buffer = message;
-
-    pthread_mutex_unlock(&stats_buffer_mutex);
-}
-
-void show_stats(void) {
-    if (application_context->stats_filename == NULL) {
-        fprintf(stderr, "ERROR: no statistics filename was provided (this function should not have been called)\n");
-        return;
-    }
-
-    FILE* stats_file = fopen(application_context->stats_filename, "w");
-    if (stats_file == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't open statistics file. Error: %s\n", strerror(errno));
-        return;
-    }
-
-    int html_counter = 0, css_counter = 0, jpg_counter = 0, png_counter = 0, plain_counter = 0;
-
-    pthread_mutex_lock(&stats_buffer_mutex);
-
-    struct stats_message *message = stats_buffer;
-    while (message != NULL) {
-        struct stats_message *temp = message->next;
-
-        switch (message->type) {
-            case TEXT_HTML:
-                html_counter++;
-                break;
-            case TEXT_CSS:
-                css_counter++;
-                break;
-            case TEXT_PLAIN:
-                plain_counter++;
-                break;
-            case IMAGE_JPEG:
-                jpg_counter++;
-                break;
-            case IMAGE_PNG:
-                png_counter++;
-                break;
-            default:
-                fprintf(stderr, "ERROR: invalid option for statistics\n");
-                break;
-        }
-
-        free(message);
-
-        message = temp;
-        stats_buffer = message;
-    }
-
-    pthread_mutex_unlock(&stats_buffer_mutex);
-
-    fprintf(stats_file, 
-        "HTML files: %d\nCSS files: %d\nPlain files: %d\nJPG/JPEG files: %d\nPNG files: %d\n",
-         html_counter, css_counter, plain_counter, jpg_counter, png_counter);
-
-    fclose(stats_file);
-}
 
 void remove_client(int sockfd) {
     pthread_mutex_lock(&connected_clients_mutex);
@@ -263,7 +175,7 @@ void terminate(int sig) {
     }
 
     if (application_context->stats_filename != NULL) {
-        show_stats();
+        show_stats(application_context->stats_filename);
     }   
 
     free_application_context();

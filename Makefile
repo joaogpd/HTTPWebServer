@@ -22,9 +22,24 @@ log_file_handler:
 	make log_file_writer
 	make log_message_producer
 
+stats_file_handler_vars:
+	gcc -Wall -c stats_file_handler_vars.o stats_file_handler_vars.c -pthread
+
+produce_stats_message:
+	gcc -Wall -c produce_stats_message.o produce_stats_message.c -pthread
+
+show_stats:
+	gcc -Wall -c show_stats.o show_stats.c -pthread
+
+stats_file_handler:
+	make stats_file_handler_vars
+	make produce_stats_message
+	make show_stats
+
 object:
 	make args
 	make log_file_handler
+	make stats_file_handler
 
 clean-object:
 	- rm *.o
