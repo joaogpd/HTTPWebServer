@@ -87,16 +87,19 @@ create_tcp_socket:
 	gcc -Wall -c create_tcp_socket.o create_tcp_socket.c
 
 client_thread:
-	gcc -Wall -c client_thread.o client_thread.c
+	gcc -Wall -c client_thread.o client_thread.c -pthread
 
 start_server:
-	gcc -Wall -c start_server.o start_server.c
+	gcc -Wall -c start_server.o start_server.c -pthread
 
 server:
 	make server_vars
 	make create_tcp_socket
 	make client_thread
 	make start_server
+
+terminate:
+	gcc -Wall -c terminate.o terminate.c
 
 object:
 	make args
@@ -105,6 +108,7 @@ object:
 	make clients
 	make response_file_handler
 	make server
+	make terminate
 
 clean-object:
 	- rm *.o
