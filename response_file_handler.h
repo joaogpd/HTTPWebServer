@@ -13,7 +13,8 @@ typedef enum {
     IMAGE_PNG = 1, 
     TEXT_HTML = 2, 
     TEXT_CSS = 3, 
-    TEXT_PLAIN = 4
+    TEXT_PLAIN = 4,
+    APPLICATION_PDF = 5
 } FileType;
 
 typedef struct file_response {
@@ -21,7 +22,7 @@ typedef struct file_response {
     size_t file_size;
 } FileResponse;
 
-extern char content_type_array[][20];
+extern char content_type_array[][30];
 
 extern char http_404_response[];
 
