@@ -1,6 +1,6 @@
 #include "response_file_handler.h"
 
-char content_type_array[][20] = {
+char content_type_array[][30] = {
     "image/jpeg", 
     "image/png", 
     "text/html", 
