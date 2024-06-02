@@ -2,13 +2,13 @@
 
 void show_stats(char* stats_filename) {
     if (stats_filename == NULL) {
-        fprintf(stderr, "ERROR: no statistics filename was provided (this function should not have been called)\n");
+        fprintf(stderr, "FATAL ERROR: no statistics filename was provided.\n");
         return;
     }
 
     FILE* stats_file = fopen(stats_filename, "w");
     if (stats_file == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't open statistics file. Error: %s\n", strerror(errno));
+        fprintf(stderr, "FATAL ERROR: couldn't open statistics file. Error: %s.\n", strerror(errno));
         return;
     }
 
@@ -37,7 +37,7 @@ void show_stats(char* stats_filename) {
                 png_counter++;
                 break;
             default:
-                fprintf(stderr, "ERROR: invalid option for statistics\n");
+                fprintf(stderr, "ERROR: invalid option for statistics.\n");
                 break;
         }
 

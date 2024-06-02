@@ -9,6 +9,8 @@ void free_application_context(void) {
         free(application_context->stats_filename);
         free(application_context->root_path);
     }
+
     free(application_context);
+    
     application_context = NULL;
 }

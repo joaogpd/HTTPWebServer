@@ -2,7 +2,7 @@
 
 char* get_file_path(char *request) {
     if (request == NULL) {
-        fprintf(stderr, "ERROR: file path was NULL\n");
+        fprintf(stderr, "ERROR: file path was NULL.\n");
         return NULL;
     }
 
@@ -13,7 +13,7 @@ char* get_file_path(char *request) {
 
     while (current_char != ' ') {
         if (current_char != *expected_request) {
-            fprintf(stderr, "ERROR: malformed request\n");
+            fprintf(stderr, "ERROR: malformed request.\n");
             return NULL;
         }
         request++;
@@ -36,7 +36,7 @@ char* get_file_path(char *request) {
 
     char *file_path = (char*)malloc(sizeof(char) * (counter + 1));
     if (file_path == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for file path\n");
+        fprintf(stderr, "ERROR: couldn't allocate memory for file path.\n");
         return NULL;
     }
 

@@ -6,7 +6,7 @@ void terminate(int sig) {
 
     if (server_sockfd != -1) {
         if (close(server_sockfd) != 0) {
-            fprintf(stderr, "FATAL ERROR: couldn't close server socket. Error: %s\n", strerror(errno));
+            fprintf(stderr, "ERROR: couldn't close server socket. Error: %s.\n", strerror(errno));
         }
     }
 

@@ -1,10 +1,11 @@
 #include "response_file_handler.h"
+#include <stdio.h>
 
 struct file_response *get_file_content(char *path) {
     // call stat to get file attributes
     char *full_path = (char*)malloc(sizeof(char) * (strlen(path) + strlen(application_context->root_path) + 1));
     if (full_path == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for full file path\n");
+        fprintf(stderr,"ERROR: couldn't allocate memory for full file path");
         return NULL;
     }
     
@@ -16,14 +17,14 @@ struct file_response *get_file_content(char *path) {
     memset(&statbuf, 0, sizeof(struct stat));
 
     if (stat(full_path, &statbuf) != 0) {
-        fprintf(stderr, "ERROR: couldn't get information on file. Error: %s\n", strerror(errno));
+        fprintf(stderr, "ERROR: couldn't get information on file.\n");
         free(full_path);
         return NULL;
     }
 
     char *file_content = (char*)malloc(sizeof(char) * (statbuf.st_size + 1));
     if (file_content == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for file content\n");
+        fprintf(stderr, "ERROR: couldn't allocate memory for file content.\n");
         
         free(full_path);
        
@@ -52,7 +53,7 @@ struct file_response *get_file_content(char *path) {
 
     struct file_response *response = (struct file_response*)malloc(sizeof(struct file_response));
     if (response == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for file response\n");
+        fprintf(stderr, "ERROR: couldn't allocate memory for file response.\n");
         
         free(full_path);
         free(file_content);

@@ -3,13 +3,13 @@
 void* log_message_producer(void* msg) {
     struct log_message *message = (struct log_message*)malloc(sizeof(struct log_message));
     if (message == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for log message. Error: %s\n", strerror(errno));    
+        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for log message. Error: %s.\n", strerror(errno));    
         return NULL;
     }
 
     message->timestamped_message = (char*)malloc(sizeof(char) * (strlen(msg) + 1));
     if (message->timestamped_message == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for timestamped_message. Error: %s\n", strerror(errno));   
+        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for timestamped_message. Error: %s.\n", strerror(errno));   
         free(message); 
         return NULL;
     }
@@ -22,10 +22,6 @@ void* log_message_producer(void* msg) {
 
     message->next = log_buffer;
     log_buffer = message;
-
-#ifdef DEBUG
-    printf("Produced message: %s\n", message->timestamped_message);
-#endif
 
     pthread_cond_signal(&new_log_data);
     pthread_mutex_unlock(&log_buffer_mutex);

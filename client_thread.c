@@ -53,27 +53,27 @@ void *client_thread(void *arg) {
             strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %T %Z", timestamp_tm);
             if (timestamp_str == NULL) {
                 free(timestamp_str);
-                log_message_producer((void*)"LOG MESSAGE: Missing timestamp");
+                log_message_producer((void*)"[ERROR] Missing timestamp");
                 continue;
             }
 
             char* file_path = get_file_path(data);
             if (file_path == NULL) {
                 free(timestamp_str);
-                log_message_producer((void*)"LOG MESSAGE: Malformed query");
+                log_message_producer((void*)"[ERROR] Malformed query");
                 continue;
             }
 
             char* message = (char*)malloc(sizeof(char) * 
-                (strlen("LOG MESSAGE: ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+                (strlen("[MESSAGE] ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
             if (message == NULL) {
                 free(timestamp_str);
                 free(file_path);
-                fprintf(stderr, "ERROR: couldn't allocate memory for message\n");
+                fprintf(stderr, "ERROR: Couldn't allocate memory for message.\n");
                 continue;
             }
 
-            strcpy(message, "LOG MESSAGE: ");
+            strcpy(message, "[MESSAGE] ");
             strcat(message, file_path);
             strcat(message, " - ");
             strcat(message, timestamp_str);
@@ -89,7 +89,7 @@ void *client_thread(void *arg) {
 
                 file_path = (char*)malloc(sizeof(char) * (strlen("/index.html") + 1));
                 if (file_path == NULL) {
-                    fprintf(stderr, "ERROR: couldn't allocate memory for index.html file path\n");
+                    fprintf(stderr,"ERROR: couldn't allocate memory for index.html file path.\n");
                     continue;
                 }
                 
@@ -102,11 +102,11 @@ void *client_thread(void *arg) {
                 free(file_path);
 
                 if (send(client_sockfd, http_404_response, sizeof(char) * strlen(http_404_response), 0) != sizeof(char) * strlen(http_404_response)) {
-                    fprintf(stderr, "ERROR: couldn't send all data. Error: %s\n", strerror(errno));
+                    log_message_producer((void*)"[ERROR] Couldn't send all data");
                     continue;
                 }
                 
-                log_message_producer("LOG MESSAGE: 404 Not Found");
+                log_message_producer("[MESSAGE] 404 Not Found");
 
                 remove_client(client_sockfd);
                 
@@ -121,11 +121,11 @@ void *client_thread(void *arg) {
                 free(file_path);
 
                 if (send(client_sockfd, http_404_response, sizeof(char) * strlen(http_404_response), 0) != sizeof(char) * strlen(http_404_response)) {
-                    fprintf(stderr, "ERROR: couldn't send all data. Error: %s\n", strerror(errno));
+                    log_message_producer((void*)"[ERROR] Couldn't send all data");
                     continue;
                 }
 
-                log_message_producer("LOG MESSAGE: 404 Not Found");
+                log_message_producer("[MESSAGE] 404 Not Found");
 
                 remove_client(client_sockfd);
                 
@@ -145,7 +145,7 @@ void *client_thread(void *arg) {
 
             char *http_response = (char*)malloc(sizeof(char) * (http_response_len));
             if (http_response == NULL) {
-                fprintf(stderr, "ERROR: couldn't allocate memory for http response\n");
+                fprintf(stderr, "ERROR: couldn't allocate memory for http response.\n");
                
                 free(file_response->file_content);
                 free(file_response);
@@ -169,7 +169,7 @@ void *client_thread(void *arg) {
             }
 
             if (send(client_sockfd, http_response, sizeof(char) * http_response_len, 0) != sizeof(char) * http_response_len) {
-                fprintf(stderr, "ERROR: couldn't send all data. Error: %s\n", strerror(errno));
+                log_message_producer((void*)"[ERROR] Couldn't send all data");
                 continue;
             }
 

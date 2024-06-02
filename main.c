@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
     // parse command line arguments
     if (parse_args(argc, argv) != 0) {
-        fprintf(stderr, "FATAL ERROR: couldn't parse args\n");
+        fprintf(stderr, "FATAL ERROR: couldn't parse args.\n");
         terminate(0);
         return 1;
     }

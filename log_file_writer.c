@@ -5,7 +5,7 @@ void* log_file_writer(void* log_filename) {
 
     log_file = fopen((char*)log_filename, "a");
     if (log_file == NULL) {
-        fprintf(stderr, "FATAL ERROR: couldn't open log file. Error: %s\n", strerror(errno));
+        fprintf(stderr, "FATAL ERROR: couldn't open log file. Error: %s.\n", strerror(errno));
         log_file_writer_id = -1;
         return NULL;
     }
@@ -20,11 +20,7 @@ void* log_file_writer(void* log_filename) {
             struct log_message *temp = message->next;
             
             fwrite(message->timestamped_message, sizeof(char), message->message_len, log_file);
-            fwrite("\n", sizeof(char), 1, log_file);
-
-#ifdef DEBUG
-            printf("Wrote message %s to file\n", message->timestamped_message);
-#endif        
+            fwrite("\n", sizeof(char), 1, log_file);   
     
             free(message->timestamped_message);
             free(message);

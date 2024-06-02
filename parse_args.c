@@ -17,7 +17,7 @@ int parse_args(int argc, char *argv[]) {
 
     application_context = (struct context*)malloc(sizeof(struct context));
     if (application_context == NULL) {
-        fprintf(stderr, "ERROR: couldn't allocate memory for application context\n");
+        fprintf(stderr, "FATAL ERROR: couldn't allocate memory for application context.\n");
         return -1;
     }
 
@@ -50,14 +50,14 @@ int parse_args(int argc, char *argv[]) {
                 strcpy(application_context->root_path, optarg);
                 break;
             case '?':
-                fprintf(stderr, "ERROR: unknown or missing argument value\n"); 
+                fprintf(stderr, "ERROR: unknown or missing argument value.\n"); 
                 SHOW_PROPER_USAGE(argv[0]);
 
                 free_application_context();
 
                 return -1;
             default:
-                fprintf(stderr, "ERROR: unknown or missing argument value\n");
+                fprintf(stderr, "ERROR: unknown or missing argument value.\n");
                 SHOW_PROPER_USAGE(argv[0]);
 
                 free_application_context();
@@ -67,14 +67,14 @@ int parse_args(int argc, char *argv[]) {
     }
 
     if (application_context->port == NULL) {
-        fprintf(stderr, "ERROR: port argument is mandatory\n");
+        fprintf(stderr, "FATAL ERROR: port argument is mandatory.\n");
         SHOW_PROPER_USAGE(argv[0]);
         free_application_context();
         return -1;
     }
 
     if (application_context->root_path == NULL) {
-        fprintf(stderr, "ERROR: path argument is mandatory\n");
+        fprintf(stderr, "FATAL ERROR: path argument is mandatory.\n");
         SHOW_PROPER_USAGE(argv[0]);
         free_application_context();
         return -1;
