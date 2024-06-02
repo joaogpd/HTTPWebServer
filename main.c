@@ -8,8 +8,11 @@
 #include "server.h"
 #include "terminate.h"
 
+#define KEEP_FILE_DESCRIPTORS 1
+#define KEEP_WORKING_DIRECTORY 1
+
 int main(int argc, char *argv[]) {
-    signal(SIGINT, terminate);
+    signal(SIGUSR1, terminate);
 
     // parse command line arguments
     if (parse_args(argc, argv) != 0) {
@@ -18,8 +21,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // send process to background (make it a daemon)
     if (application_context->background) {
-        if (daemon(1, 1) != 0) {
+        if (daemon(KEEP_FILE_DESCRIPTORS, KEEP_WORKING_DIRECTORY) != 0) {
             fprintf(stderr, 
                 "FATAL ERROR: couldn't daemonize server. Error: %s\n", 
                 strerror(errno));
