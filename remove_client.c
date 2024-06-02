@@ -15,14 +15,7 @@ void remove_client(int sockfd) {
     }    
 
     if (client != NULL) {
-        if (prev == NULL) {
-            connected_clients = client->next;
-        } else {
-            prev->next = client->next;
-        }
-
         close(client->sockfd);
-        free(client);
     }
 
     pthread_mutex_unlock(&connected_clients_mutex);
