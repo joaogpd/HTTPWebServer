@@ -176,10 +176,6 @@ void *client_thread(void *arg) {
             free(http_response);
             free(file_response->file_content);
             free(file_response);
-
-            remove_client(client_sockfd);
-
-            return NULL;
         }
 
         pthread_testcancel();
