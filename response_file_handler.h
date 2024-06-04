@@ -14,7 +14,8 @@ typedef enum {
     TEXT_HTML = 2, 
     TEXT_CSS = 3, 
     TEXT_PLAIN = 4,
-    APPLICATION_PDF = 5
+    TEXT_JAVASCRIPT = 5,
+    APPLICATION_PDF = 6
 } FileType;
 
 typedef struct file_response {

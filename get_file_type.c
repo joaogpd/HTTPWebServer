@@ -9,6 +9,8 @@ FileType get_file_type(char *extension) {
         return TEXT_HTML;
     } else if (strcmp("css", extension) == 0) {
         return TEXT_CSS;
+    } else if (strcmp("js", extension) == 0) {
+        return TEXT_JAVASCRIPT;
     } else if (strcmp("pdf", extension) == 0) { // unknown extension
         return APPLICATION_PDF;
     } else {

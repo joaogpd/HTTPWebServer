@@ -6,6 +6,7 @@ char content_type_array[][30] = {
     "text/html", 
     "text/css", 
     "text/plain",
+    "text/javascript",
     "application/pdf"
 };
 

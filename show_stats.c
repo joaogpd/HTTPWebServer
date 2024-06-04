@@ -13,7 +13,8 @@ void show_stats(char* stats_filename) {
         return;
     }
 
-    int html_counter = 0, css_counter = 0, jpg_counter = 0, png_counter = 0, plain_counter = 0, pdf_counter = 0;
+    int html_counter = 0, css_counter = 0, js_counter = 0, jpg_counter = 0,
+         png_counter = 0, plain_counter = 0, pdf_counter = 0;
 
     pthread_mutex_lock(&stats_buffer_mutex);
 
@@ -30,6 +31,9 @@ void show_stats(char* stats_filename) {
                 break;
             case TEXT_PLAIN:
                 plain_counter++;
+                break;
+            case TEXT_JAVASCRIPT:
+                js_counter++;
                 break;
             case IMAGE_JPEG:
                 jpg_counter++;
@@ -54,8 +58,8 @@ void show_stats(char* stats_filename) {
     pthread_mutex_unlock(&stats_buffer_mutex);
 
     fprintf(stats_file, 
-        "HTML files: %d\nCSS files: %d\nPlain files: %d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n",
-         html_counter, css_counter, plain_counter, jpg_counter, png_counter, pdf_counter);
+        "HTML files: %d\nCSS files: %d\nJS files: %d\nPlain files: %d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n",
+         html_counter, css_counter, js_counter, plain_counter, jpg_counter, png_counter, pdf_counter);
 
     fclose(stats_file);
 }
