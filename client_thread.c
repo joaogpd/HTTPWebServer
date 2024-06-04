@@ -78,8 +78,6 @@ void *client_thread(void *arg) {
             strcat(message, " - ");
             strcat(message, timestamp_str);
 
-            free(timestamp_str);
-
             log_message_producer((void*)message);
         
             free(message);
@@ -99,39 +97,75 @@ void *client_thread(void *arg) {
             // get file extension
             char *file_extension = strrchr(file_path, (int)'.');
             if (file_extension == NULL) {
-                free(file_path);
-
-                if (send(client_sockfd, http_404_response, sizeof(char) * strlen(http_404_response), 0) != sizeof(char) * strlen(http_404_response)) {
-                    log_message_producer((void*)"[ERROR] Couldn't send all data");
-                    continue;
-                }
-                
-                log_message_producer("[MESSAGE] 404 Not Found");
-
-                remove_client(client_sockfd);
-                
-                return NULL;    
-            }
-            file_extension++; // get past dot
-
-            FileType type = get_file_type(file_extension);
-
-            struct file_response* file_response = get_file_content(file_path);
-            if (file_response == NULL) {
-                free(file_path);
-
                 if (send(client_sockfd, http_404_response, sizeof(char) * strlen(http_404_response), 0) != sizeof(char) * strlen(http_404_response)) {
                     log_message_producer((void*)"[ERROR] Couldn't send all data");
                     continue;
                 }
 
-                log_message_producer("[MESSAGE] 404 Not Found");
+                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %T %Z", timestamp_tm);
+                if (timestamp_str == NULL) {
+                    free(timestamp_str);
+                    log_message_producer((void*)"[ERROR] Missing timestamp");
+                    continue;
+                }
+
+                char* message_404 = (char*)malloc(sizeof(char) * 
+                    (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+
+                strcpy(message_404, "[MESSAGE] 404 Not Found - ");
+                strcat(message_404, file_path);
+                strcat(message_404, " - ");
+                strcat(message_404, timestamp_str);
+                
+                log_message_producer(message_404);
+
+                free(timestamp_str);
+                free(file_path);
+                free(message_404);
 
                 remove_client(client_sockfd);
                 
                 return NULL; 
             }
 
+            file_extension++; // get past dot
+
+            FileType type = get_file_type(file_extension);
+
+            struct file_response* file_response = get_file_content(file_path);
+            if (file_response == NULL) {
+                if (send(client_sockfd, http_404_response, sizeof(char) * strlen(http_404_response), 0) != sizeof(char) * strlen(http_404_response)) {
+                    log_message_producer((void*)"[ERROR] Couldn't send all data");
+                    continue;
+                }
+
+                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %T %Z", timestamp_tm);
+                if (timestamp_str == NULL) {
+                    free(timestamp_str);
+                    log_message_producer((void*)"[ERROR] Missing timestamp");
+                    continue;
+                }
+
+                char* message_404 = (char*)malloc(sizeof(char) * 
+                    (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+
+                strcpy(message_404, "[MESSAGE] 404 Not Found - ");
+                strcat(message_404, file_path);
+                strcat(message_404, " - ");
+                strcat(message_404, timestamp_str);
+                
+                log_message_producer(message_404);
+
+                free(timestamp_str);
+                free(file_path);
+                free(message_404);
+
+                remove_client(client_sockfd);
+                
+                return NULL; 
+            }
+
+            free(timestamp_str);
             free(file_path);
 
             char *content_type = content_type_array[type]; // this needs to be used to produce the response
