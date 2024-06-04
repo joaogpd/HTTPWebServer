@@ -1,3 +1,4 @@
+#include "response_file_handler.h"
 #include "stats_file_handler.h"
 
 void show_stats(char* stats_filename) {
@@ -12,7 +13,7 @@ void show_stats(char* stats_filename) {
         return;
     }
 
-    int html_counter = 0, css_counter = 0, jpg_counter = 0, png_counter = 0, plain_counter = 0;
+    int html_counter = 0, css_counter = 0, jpg_counter = 0, png_counter = 0, plain_counter = 0, pdf_counter = 0;
 
     pthread_mutex_lock(&stats_buffer_mutex);
 
@@ -36,6 +37,9 @@ void show_stats(char* stats_filename) {
             case IMAGE_PNG:
                 png_counter++;
                 break;
+            case APPLICATION_PDF:
+                pdf_counter++;
+                break;
             default:
                 fprintf(stderr, "ERROR: invalid option for statistics.\n");
                 break;
@@ -50,8 +54,8 @@ void show_stats(char* stats_filename) {
     pthread_mutex_unlock(&stats_buffer_mutex);
 
     fprintf(stats_file, 
-        "HTML files: %d\nCSS files: %d\nPlain files: %d\nJPG/JPEG files: %d\nPNG files: %d\n",
-         html_counter, css_counter, plain_counter, jpg_counter, png_counter);
+        "HTML files: %d\nCSS files: %d\nPlain files: %d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n",
+         html_counter, css_counter, plain_counter, jpg_counter, png_counter, pdf_counter);
 
     fclose(stats_file);
 }
