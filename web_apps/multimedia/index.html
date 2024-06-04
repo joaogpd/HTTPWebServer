@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multimedia Embedding</title>
+<style>
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+</head>
+<body>
+
+<h2>Embedded Multimedia</h2>
+
+<table id="multimediaTable">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Embedding</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+        <!-- Table body will be populated dynamically -->
+    </tbody>
+</table>
+
+<script>
+    // Function to populate the table with multimedia
+    function populateTable() {
+        const tableBody = document.getElementById('tableBody');
+
+        // Video
+        const videoRow = `
+            <tr>
+                <td>Video</td>
+                <td><video width="320" height="240" controls>
+                        <source src="video.mp4" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video></td>
+            </tr>`;
+        tableBody.insertAdjacentHTML('beforeend', videoRow);
+
+        // GIF
+        const gifRow = `
+            <tr>
+                <td>GIF</td>
+                <td><img src="animation.gif" alt="GIF Animation"></td>
+            </tr>`;
+        tableBody.insertAdjacentHTML('beforeend', gifRow);
+
+        // SVG
+        const svgRow = `
+            <tr>
+                <td>SVG</td>
+                <td><object type="image/svg+xml" data="vis.svg" width="100" height="100"></object></td>
+            </tr>`;
+        tableBody.insertAdjacentHTML('beforeend', svgRow);
+
+        // TIFF (Placeholder)
+        const tiffRow = `
+            <tr>
+                <td>TIFF</td>
+                <td>TIFF format not supported by browsers</td>
+            </tr>`;
+        tableBody.insertAdjacentHTML('beforeend', tiffRow);
+
+        // ICO (Placeholder)
+        const icoRow = `
+            <tr>
+                <td>ICO</td>
+                <td>ICO format not supported by browsers</td>
+            </tr>`;
+        tableBody.insertAdjacentHTML('beforeend', icoRow);
+    }
+
+    // Call the populateTable function when the page loads
+    window.onload = populateTable;
+</script>
+
+</body>
+</html>

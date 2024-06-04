@@ -3,10 +3,17 @@
 char content_type_array[][30] = {
     "image/jpeg", 
     "image/png", 
+    "image/tiff",
+    "image/gif",
+    "image/svg+xml",
+    "image/x-icon",
+    "video/mp4",
     "text/html", 
     "text/css", 
     "text/plain",
     "text/javascript",
+    "text/csv",
+    "text/xml",
     "application/pdf"
 };
 

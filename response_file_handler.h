@@ -11,11 +11,18 @@
 typedef enum {
     IMAGE_JPEG = 0, 
     IMAGE_PNG = 1, 
-    TEXT_HTML = 2, 
-    TEXT_CSS = 3, 
-    TEXT_PLAIN = 4,
-    TEXT_JAVASCRIPT = 5,
-    APPLICATION_PDF = 6
+    IMAGE_TIFF,
+    IMAGE_GIF,
+    IMAGE_SVG,
+    IMAGE_ICO,
+    VIDEO_MP4,
+    TEXT_HTML, 
+    TEXT_CSS, 
+    TEXT_PLAIN,
+    TEXT_JAVASCRIPT,
+    TEXT_CSV,
+    TEXT_XML,
+    APPLICATION_PDF
 } FileType;
 
 typedef struct file_response {
