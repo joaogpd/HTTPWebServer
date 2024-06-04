@@ -1,27 +1,27 @@
 free_application_context: free_application_context.c args.h
-	gcc -Wall -c free_application_context.o free_application_context.c  
+	gcc -Wall -g -c free_application_context.o free_application_context.c  
 
 parse_args: parse_args.c args.h
-	gcc -Wall -c parse_args.o parse_args.c
+	gcc -Wall -g -c parse_args.o parse_args.c
 
 args:
 	make free_application_context
 	make parse_args
 
 log_file_handler_vars:
-	gcc -Wall -c log_file_handler_vars.o log_file_handler_vars.c -pthread
+	gcc -Wall -g -c log_file_handler_vars.o log_file_handler_vars.c -pthread
 
 log_file_writer:
-	gcc -Wall -c log_file_writer.o log_file_writer.c -pthread
+	gcc -Wall -g -c log_file_writer.o log_file_writer.c -pthread
 
 log_message_producer:
-	gcc -Wall -c log_message_producer.o log_message_producer.c -pthread
+	gcc -Wall -g -c log_message_producer.o log_message_producer.c -pthread
 
 free_log_buffer:
-	gcc -Wall -c free_log_buffer.o free_log_buffer.c -pthread
+	gcc -Wall -g -c free_log_buffer.o free_log_buffer.c -pthread
 
 terminate_log_file_writer:
-	gcc -Wall -c terminate_log_file_writer.o terminate_log_file_writer.c -pthread
+	gcc -Wall -g -c terminate_log_file_writer.o terminate_log_file_writer.c -pthread
 
 log_file_handler:
 	make log_file_handler_vars
@@ -31,10 +31,10 @@ log_file_handler:
 	make terminate_log_file_writer
 
 stats_file_handler_vars:
-	gcc -Wall -c stats_file_handler_vars.o stats_file_handler_vars.c -pthread
+	gcc -Wall -g -c stats_file_handler_vars.o stats_file_handler_vars.c -pthread
 
 produce_stats_message:
-	gcc -Wall -c produce_stats_message.o produce_stats_message.c -pthread
+	gcc -Wall -g -c produce_stats_message.o produce_stats_message.c -pthread
 
 show_stats:
 	gcc -Wall -c show_stats.o show_stats.c -pthread
@@ -45,16 +45,16 @@ stats_file_handler:
 	make show_stats
 
 clients_vars:
-	gcc -Wall -c clients_vars.o clients_vars.c -pthread
+	gcc -Wall -g -c clients_vars.o clients_vars.c -pthread
 
 insert_client:
-	gcc -Wall -c insert_client.o insert_client.c -pthread
+	gcc -Wall -g -c insert_client.o insert_client.c -pthread
 
 remove_client:
-	gcc -Wall -c remove_client.o remove_client.c -pthread
+	gcc -Wall -g -c remove_client.o remove_client.c -pthread
 
 close_clients:
-	gcc -Wall -c close_clients.o close_clients.c -pthread
+	gcc -Wall -g -c close_clients.o close_clients.c -pthread
 
 clients:
 	make clients_vars
@@ -63,16 +63,16 @@ clients:
 	make close_clients
 
 response_file_handler_vars:
-	gcc -Wall -c response_file_handler_vars.o response_file_handler_vars.c
+	gcc -Wall -g -c response_file_handler_vars.o response_file_handler_vars.c
 
 get_file_content:
-	gcc -Wall -c get_file_content.o get_file_content.c 
+	gcc -Wall -g -c get_file_content.o get_file_content.c 
 
 get_file_path:
-	gcc -Wall -c get_file_path.o get_file_path.c
+	gcc -Wall -g -c get_file_path.o get_file_path.c
 
 get_file_type:
-	gcc -Wall -c get_file_type.o get_file_type.c
+	gcc -Wall -g -c get_file_type.o get_file_type.c
 
 response_file_handler:
 	make response_file_handler_vars
@@ -81,16 +81,16 @@ response_file_handler:
 	make get_file_type
 
 server_vars:
-	gcc -Wall -c server_vars.o server_vars.c
+	gcc -Wall -g -c server_vars.o server_vars.c
 
 create_tcp_socket:
-	gcc -Wall -c create_tcp_socket.o create_tcp_socket.c
+	gcc -Wall -g -c create_tcp_socket.o create_tcp_socket.c
 
 client_thread:
-	gcc -Wall -c client_thread.o client_thread.c -pthread
+	gcc -Wall -g -c client_thread.o client_thread.c -pthread
 
 start_server:
-	gcc -Wall -c start_server.o start_server.c -pthread
+	gcc -Wall -g -c start_server.o start_server.c -pthread
 
 server:
 	make server_vars
@@ -99,7 +99,7 @@ server:
 	make start_server
 
 terminate:
-	gcc -Wall -c terminate.o terminate.c
+	gcc -Wall -g -c terminate.o terminate.c
 
 object:
 	make args

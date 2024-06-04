@@ -50,14 +50,14 @@ int parse_args(int argc, char *argv[]) {
                 strcpy(application_context->root_path, optarg);
                 break;
             case '?':
-                fprintf(stderr, "ERROR: unknown or missing argument value.\n"); 
+                fprintf(stderr, "FATAL ERROR: unknown or missing argument value.\n"); 
                 SHOW_PROPER_USAGE(argv[0]);
 
                 free_application_context();
 
                 return -1;
             default:
-                fprintf(stderr, "ERROR: unknown or missing argument value.\n");
+                fprintf(stderr, "FATAL ERROR: unknown or missing argument value.\n");
                 SHOW_PROPER_USAGE(argv[0]);
 
                 free_application_context();
