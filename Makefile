@@ -122,5 +122,5 @@ clean:
 
 build:
 	make object
-	gcc -Wall -o main.out main.c *.o -pthread
+	gcc -Wall -o webserver.out main.c *.o -pthread
 	make clean-object
