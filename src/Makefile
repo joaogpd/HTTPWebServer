@@ -1,3 +1,8 @@
+build:
+	make object
+	gcc -Wall -o webserver.out main.c *.o -pthread
+	make clean-object
+
 free_application_context: free_application_context.c 
 	gcc -Wall -c free_application_context.o free_application_context.c  
 
@@ -119,8 +124,3 @@ clean-out:
 clean: 
 	make clean-object
 	make clean-out
-
-build:
-	make object
-	gcc -Wall -o webserver.out main.c *.o -pthread
-	make clean-object

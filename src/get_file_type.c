@@ -3,6 +3,8 @@
 FileType get_file_type(char *extension) {
     if (strcmp("jpg", extension) == 0 || strcmp("jpeg", extension) == 0) {
         return IMAGE_JPEG;
+    } else if (strcmp("webp", extension) == 0) {
+        return IMAGE_WEBP;
     } else if (strcmp("png", extension) == 0) {
         return IMAGE_PNG;
     }  else if (strcmp("tiff", extension) == 0) {

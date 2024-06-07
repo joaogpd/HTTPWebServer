@@ -11,6 +11,7 @@
 typedef enum {
     IMAGE_JPEG = 0, 
     IMAGE_PNG = 1, 
+    IMAGE_WEBP,
     IMAGE_TIFF,
     IMAGE_GIF,
     IMAGE_SVG,

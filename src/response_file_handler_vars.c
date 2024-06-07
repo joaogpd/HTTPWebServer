@@ -3,6 +3,7 @@
 char content_type_array[][30] = {
     "image/jpeg", 
     "image/png", 
+    "image/webp",
     "image/tiff",
     "image/gif",
     "image/svg+xml",
