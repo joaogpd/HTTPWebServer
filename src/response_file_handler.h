@@ -11,10 +11,19 @@
 typedef enum {
     IMAGE_JPEG = 0, 
     IMAGE_PNG = 1, 
-    TEXT_HTML = 2, 
-    TEXT_CSS = 3, 
-    TEXT_PLAIN = 4,
-    APPLICATION_PDF = 5
+    IMAGE_WEBP,
+    IMAGE_TIFF,
+    IMAGE_GIF,
+    IMAGE_SVG,
+    IMAGE_ICO,
+    VIDEO_MP4,
+    TEXT_HTML, 
+    TEXT_CSS, 
+    TEXT_PLAIN,
+    TEXT_JAVASCRIPT,
+    TEXT_CSV,
+    TEXT_XML,
+    APPLICATION_PDF
 } FileType;
 
 typedef struct file_response {
@@ -24,11 +33,13 @@ typedef struct file_response {
 
 extern char content_type_array[][30];
 
-extern char http_404_response[];
+extern char http_404_response_pt1[];
+extern char http_404_response_pt2[];
 
 extern char http_ok_response_pt1[];
 extern char http_ok_response_pt2[];
 extern char http_ok_response_pt3[];
+extern char http_ok_response_pt4[];
 
 char* get_file_path(char *request);
 struct file_response *get_file_content(char *path);

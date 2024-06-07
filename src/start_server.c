@@ -11,6 +11,7 @@ int start_server(char *port, int domain) {
     }
 
     if ((server_sockfd = create_tcp_socket(domain)) == -1) {
+        fprintf(stderr, "FATAL ERROR: couldn't create socket. Error: %s.\n", strerror(errno));
         return -1;
     }
 
@@ -23,7 +24,7 @@ int start_server(char *port, int domain) {
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     // if domain is IPv6, accept IPv4 addresses aswell
-    hints.ai_family = (domain == AF_INET6) ? AF_UNSPEC : domain; 
+    hints.ai_family = domain; 
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST | AI_PASSIVE;
     struct addrinfo* res;

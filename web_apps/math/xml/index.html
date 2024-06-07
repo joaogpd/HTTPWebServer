@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topology Concepts</title>
+<style>
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+</head>
+<body>
+
+<h2>Topology Concepts</h2>
+
+<table id="topologyTable">
+    <thead>
+        <tr>
+            <th>Concept</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+        <!-- Table body will be populated dynamically -->
+    </tbody>
+</table>
+
+<script>
+    // Function to fetch data from XML file
+    function fetchData() {
+        fetch('topology_concepts.xml')
+            .then(response => response.text())
+            .then(data => processData(data));
+    }
+
+    // Function to process XML data and populate the table
+    function processData(data) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(data, 'text/xml');
+        const concepts = xmlDoc.getElementsByTagName('concept');
+        const tableBody = document.getElementById('tableBody');
+
+        for (let i = 0; i < concepts.length; i++) {
+            const concept = concepts[i];
+            const name = concept.getElementsByTagName('name')[0].textContent;
+            const description = concept.getElementsByTagName('description')[0].textContent;
+
+            const newRow = `<tr><td>${name}</td><td>${description}</td></tr>`;
+            tableBody.insertAdjacentHTML('beforeend', newRow);
+        }
+    }
+
+    // Call the fetchData function when the page loads
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>

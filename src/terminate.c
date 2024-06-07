@@ -1,4 +1,5 @@
 #include "terminate.h"
+#include "args.h"
 
 void terminate(int sig) {
     close_clients();
@@ -10,9 +11,11 @@ void terminate(int sig) {
         }
     }
 
-    if (application_context->stats_filename != NULL) {
-        show_stats(application_context->stats_filename);
-    }   
+    if (application_context != NULL) {
+        if (application_context->stats_filename != NULL) {
+            show_stats(application_context->stats_filename);
+        }   
+    }
 
     free_application_context();
 

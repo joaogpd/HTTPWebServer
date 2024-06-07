@@ -22,6 +22,12 @@
         </ul>
     </nav>
     <main>
+        <div id="microcontroller">
+            <div class="label">Microcontroller</div>
+            <div id="led1" class="led">LED 1</div>
+            <div id="led2" class="led">LED 2</div>
+            <div id="led3" class="led">LED 3</div>
+        </div>
         <section id="overview">
             <h2>Overview</h2>
             <img src="images/msp430-board.jpg" alt="MSP430 Overview" class="section-image" width="200" height="200">
@@ -59,6 +65,14 @@
             <h2>Contact</h2>
             <p>For more information, please contact Texas Instruments.</p>
         </section>
+
+        <button id="startButton">Start LED Blink</button>
+        <div id="led"></div>
+        <div id="countdown">Blinking in <span id="countdownValue"></span> seconds...</div>
+        <button id="stopButton">Stop LED Blink</button>
+
+        <script src="scripts/blink.js"></script>
+        <script src="scripts/microcontroller.js"></script>
     </main>
 </body>
 </html>

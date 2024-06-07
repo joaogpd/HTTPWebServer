@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Fields</title>
+<style>
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+</head>
+<body>
+
+<h2>Math Fields</h2>
+
+<table id="mathFieldsTable">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+        <!-- Table body will be populated dynamically -->
+    </tbody>
+</table>
+
+<script>
+    // Function to fetch data from CSV file
+    function fetchData() {
+        fetch('math_fields.csv')
+            .then(response => response.text())
+            .then(data => processData(data));
+    }
+
+    // Function to process CSV data and populate the table
+    function processData(data) {
+        const rows = data.split('\n').slice(1); // Split CSV into rows, excluding header
+        const tableBody = document.getElementById('tableBody');
+
+        rows.forEach(row => {
+            const [field, description] = row.split(','); // Split each row into columns
+            const newRow = `<tr><td>${field}</td><td>${description}</td></tr>`;
+            tableBody.insertAdjacentHTML('beforeend', newRow);
+        });
+    }
+
+    // Call the fetchData function when the page loads
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>

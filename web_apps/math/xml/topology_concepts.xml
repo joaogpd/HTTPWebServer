@@ -1,0 +1,22 @@
+<topology_concepts>
+    <concept>
+        <name>Open Set</name>
+        <description>An open set is a set that does not contain its boundary points.</description>
+    </concept>
+    <concept>
+        <name>Closed Set</name>
+        <description>A closed set is a set that contains all its boundary points.</description>
+    </concept>
+    <concept>
+        <name>Compact Set</name>
+        <description>A compact set is a set for which every open cover has a finite subcover.</description>
+    </concept>
+    <concept>
+        <name>Homeomorphism</name>
+        <description>A homeomorphism is a continuous function between two topological spaces that has a continuous inverse function.</description>
+    </concept>
+    <concept>
+        <name>Connected Set</name>
+        <description>A connected set is a set that cannot be divided into two nonempty disjoint open sets.</description>
+    </concept>
+</topology_concepts>

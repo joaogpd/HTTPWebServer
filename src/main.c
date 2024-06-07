@@ -27,7 +27,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, 
                 "FATAL ERROR: couldn't daemonize server. Error: %s\n", 
                 strerror(errno));
+
             terminate(0);
+
             return 1;
         }
     }
@@ -38,7 +40,11 @@ int main(int argc, char *argv[]) {
 
     printf("Server started. Exit with 'kill -SIGUSR1 <pid>'.\n");
 
-    start_server(application_context->port, AF_INET);
+    int error = start_server(application_context->port, AF_INET);
+
+    if (error == -1) {
+        fprintf(stderr, "FATAL ERROR: start server should never return.\n");
+    }
 
     terminate(0);
 
