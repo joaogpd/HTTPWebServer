@@ -42,7 +42,7 @@ void *client_thread(void *arg) {
             }
 
             time_t timestamp = time(NULL);
-            struct tm *timestamp_tm = gmtime(&timestamp);
+            struct tm *timestamp_tm = localtime(&timestamp);
 
             char *timestamp_str = (char*)malloc(sizeof(char) * TIMESTAMP_MSG_SIZE);
             if (timestamp_str ==  NULL) {
@@ -93,6 +93,9 @@ void *client_thread(void *arg) {
                 
                 strcpy(file_path, "/index.html");
             }
+
+            timestamp = time(NULL);
+            timestamp_tm = gmtime(&timestamp);
 
             // get file extension
             char *file_extension = strrchr(file_path, (int)'.');
