@@ -17,20 +17,18 @@ int main(int argc, char *argv[]) {
     // parse command line arguments
     if (parse_args(argc, argv) != 0) {
         fprintf(stderr, "FATAL ERROR: couldn't parse args.\n");
-        terminate(0);
-        return 1;
+
+        terminate(EXIT_FAILURE);
     }
 
-    // send process to background (make it a daemon)
     if (application_context->background) {
-        if (daemon(KEEP_FILE_DESCRIPTORS, KEEP_WORKING_DIRECTORY) != 0) {
-            fprintf(stderr, 
-                "FATAL ERROR: couldn't daemonize server. Error: %s\n", 
-                strerror(errno));
-
-            terminate(0);
-
-            return 1;
+        pid_t pid = fork();
+        if (pid == -1) {
+            fprintf(stderr, "FATAL ERROR: couldn't fork process. Error: %s\n", strerror(errno));
+            
+            terminate(EXIT_FAILURE);
+        } else if (pid != 0) {
+            terminate(SIGUSR1); // will exit gracefully
         }
     }
 
@@ -46,7 +44,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "FATAL ERROR: start server should never return.\n");
     }
 
-    terminate(0);
+    terminate(EXIT_FAILURE);
 
     return 0;
 }

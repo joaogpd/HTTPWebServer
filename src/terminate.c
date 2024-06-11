@@ -24,5 +24,8 @@ void terminate(int sig) {
         fclose(log_file);
     }
 
+    if (sig == EXIT_FAILURE) {
+        _exit(EXIT_FAILURE);
+    }
     _exit(EXIT_SUCCESS);
 }
