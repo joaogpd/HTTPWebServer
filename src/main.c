@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         pthread_create(&log_file_writer_id, NULL, log_file_writer, application_context->log_filename);
     }
 
-    printf("Server started. Exit with 'kill -SIGUSR1 <pid>'.\n");
+    printf("Server started. Exit with 'kill -SIGUSR1 %d'.\n", getpid());
 
     int error = start_server(application_context->port, AF_INET);
 

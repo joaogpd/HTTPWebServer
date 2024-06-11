@@ -81,7 +81,7 @@ void show_stats(char* stats_filename) {
 
     fprintf(stats_file, 
         "HTML files: %d\nCSS files: %d\nJS files: %d\nPlain files: %d\n\
-CSV files: %d\nXML files:%d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n\
+CSV files: %d\nXML files: %d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n\
 TIFF files: %d\nGIF files: %d\nSVG files: %d\nICO files: %d\nMP4 files: %d\n",
          html_counter, css_counter, js_counter, plain_counter, csv_counter, 
          xml_counter, jpg_counter, png_counter, pdf_counter,
