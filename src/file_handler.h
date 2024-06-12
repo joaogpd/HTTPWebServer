@@ -17,6 +17,7 @@ typedef enum {
     IMAGE_GIF,
     IMAGE_SVG,
     IMAGE_ICO,
+    IMAGE_AVIF,
     VIDEO_MP4,
     TEXT_HTML, 
     TEXT_CSS, 

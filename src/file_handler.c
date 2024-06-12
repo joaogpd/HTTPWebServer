@@ -19,6 +19,7 @@ char content_type_array[][30] = {
     "image/gif",
     "image/svg+xml",
     "image/x-icon",
+    "image/avif",
     "video/mp4",
     "text/html", 
     "text/css", 
@@ -160,7 +161,7 @@ void show_stats(char* stats_filename) {
 
     int html_counter = 0, css_counter = 0, js_counter = 0, csv_counter = 0, xml_counter = 0,
         jpg_counter = 0, png_counter = 0, gif_counter = 0, ico_counter = 0, tiff_counter = 0,
-        svg_counter = 0, mp4_counter = 0, plain_counter = 0, pdf_counter = 0;
+        svg_counter = 0, mp4_counter = 0, plain_counter = 0, pdf_counter = 0, avif_counter = 0;
 
     pthread_mutex_lock(&stats_buffer_mutex);
 
@@ -205,6 +206,9 @@ void show_stats(char* stats_filename) {
             case IMAGE_SVG:
                 svg_counter++;
                 break;
+            case IMAGE_AVIF:
+                avif_counter++;
+                break;
             case VIDEO_MP4:
                 mp4_counter++;
                 break;
@@ -225,11 +229,11 @@ void show_stats(char* stats_filename) {
     pthread_mutex_unlock(&stats_buffer_mutex);
 
     fprintf(stats_file, 
-        "HTML files: %d\nCSS files: %d\nJS files: %d\nPlain files: %d\n\
-CSV files: %d\nXML files: %d\nJPG/JPEG files: %d\nPNG files: %d\nPDF files: %d\n\
+"HTML files: %d\nCSS files: %d\nJS files: %d\nPlain files: %d\n\
+CSV files: %d\nXML files: %d\nJPG/JPEG files: %d\nPNG files: %d\nAVIF files: %d\nPDF files: %d\n\
 TIFF files: %d\nGIF files: %d\nSVG files: %d\nICO files: %d\nMP4 files: %d\n",
          html_counter, css_counter, js_counter, plain_counter, csv_counter, 
-         xml_counter, jpg_counter, png_counter, pdf_counter,
+         xml_counter, jpg_counter, png_counter, avif_counter, pdf_counter,
          tiff_counter, gif_counter, svg_counter, ico_counter, mp4_counter);
 
     fclose(stats_file);
@@ -373,6 +377,8 @@ FileType get_file_type(char *extension) {
         return IMAGE_ICO;
     } else if (strcmp("svg", extension) == 0) {
         return IMAGE_SVG;
+    } else if (strcmp("avif", extension) == 0) {
+        return IMAGE_AVIF;
     }  else if (strcmp("mp4", extension) == 0) {
         return VIDEO_MP4;
     } else if (strcmp("html", extension) == 0) {
