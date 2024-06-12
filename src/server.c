@@ -171,19 +171,16 @@ void *client_thread(void *arg) {
             timestamp = time(NULL);
             timestamp_tm = gmtime(&timestamp);
 
+            strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
+            if (timestamp_str == NULL) {
+                free(timestamp_str);
+                log_message_producer((void*)"[ERROR] Missing timestamp");
+                continue;
+            }
+
             // get file extension
             char *file_extension = strrchr(file_path, (int)'.');
             if (file_extension == NULL) {
-                timestamp = time(NULL);
-                timestamp_tm = localtime(&timestamp);
-
-                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
-                if (timestamp_str == NULL) {
-                    free(timestamp_str);
-                    log_message_producer((void*)"[ERROR] Missing timestamp");
-                    continue;
-                }
-
                 size_t http_response_404_len = strlen(http_404_response_pt1) + strlen(http_404_response_pt2) + strlen(timestamp_str) + 1;
                 char* http_response_404 = (char*)malloc(sizeof(char) * http_response_404_len);
 
@@ -207,6 +204,20 @@ void *client_thread(void *arg) {
 
                 char* message_404 = (char*)malloc(sizeof(char) * 
                     (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+                if (message_404 == NULL) {
+                    fprintf(stderr, "ERROR: couldn't allocate memory for 404 message. Error: %s\n", strerror(errno));
+                    continue;
+                }
+
+                timestamp = time(NULL);
+                timestamp_tm = localtime(&timestamp);
+
+                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
+                if (timestamp_str == NULL) {
+                    free(timestamp_str);
+                    log_message_producer((void*)"[ERROR] Missing timestamp");
+                    continue;
+                }
 
                 strcpy(message_404, "[MESSAGE] 404 Not Found - ");
                 strcat(message_404, file_path);
@@ -230,16 +241,6 @@ void *client_thread(void *arg) {
 
             struct file_response* file_response = get_file_content(file_path);
             if (file_response == NULL) {
-                timestamp = time(NULL);
-                timestamp_tm = localtime(&timestamp);
-
-                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
-                if (timestamp_str == NULL) {
-                    free(timestamp_str);
-                    log_message_producer((void*)"[ERROR] Missing timestamp");
-                    continue;
-                }
-
                 size_t http_response_404_len = strlen(http_404_response_pt1) + strlen(http_404_response_pt2) + strlen(timestamp_str) + 1;
                 char* http_response_404 = (char*)malloc(sizeof(char) * http_response_404_len);
 
@@ -263,6 +264,20 @@ void *client_thread(void *arg) {
 
                 char* message_404 = (char*)malloc(sizeof(char) * 
                     (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
+                if (message_404 == NULL) {
+                    fprintf(stderr, "ERROR: couldn't allocate memory for 404 message. Error: %s\n", strerror(errno));
+                    continue;
+                }
+                
+                timestamp = time(NULL);
+                timestamp_tm = localtime(&timestamp);
+
+                strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
+                if (timestamp_str == NULL) {
+                    free(timestamp_str);
+                    log_message_producer((void*)"[ERROR] Missing timestamp");
+                    continue;
+                }
 
                 strcpy(message_404, "[MESSAGE] 404 Not Found - ");
                 strcat(message_404, file_path);
