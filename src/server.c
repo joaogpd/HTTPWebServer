@@ -174,6 +174,9 @@ void *client_thread(void *arg) {
             // get file extension
             char *file_extension = strrchr(file_path, (int)'.');
             if (file_extension == NULL) {
+                timestamp = time(NULL);
+                timestamp_tm = localtime(&timestamp);
+
                 strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
                 if (timestamp_str == NULL) {
                     free(timestamp_str);
@@ -227,6 +230,9 @@ void *client_thread(void *arg) {
 
             struct file_response* file_response = get_file_content(file_path);
             if (file_response == NULL) {
+                timestamp = time(NULL);
+                timestamp_tm = localtime(&timestamp);
+
                 strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
                 if (timestamp_str == NULL) {
                     free(timestamp_str);
