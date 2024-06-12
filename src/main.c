@@ -4,9 +4,8 @@
 #include <stdbool.h>
 #include <signal.h>
 #include "args.h"
-#include "log_file_handler.h"
+#include "file_handler.h"
 #include "server.h"
-#include "terminate.h"
 
 #define KEEP_FILE_DESCRIPTORS 1
 #define KEEP_WORKING_DIRECTORY 1

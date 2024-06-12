@@ -8,6 +8,9 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include "file_handler.h"
+#include "args.h"
+#include "clients.h"
 
 #define MAX_BACKLOG 100
 #define MAX_MSG_SIZE 1000
@@ -18,5 +21,6 @@ extern int server_sockfd;
 int start_server(char *port, int domain);
 void *client_thread(void *arg);
 int create_tcp_socket(int domain);
+void terminate(int sig);
 
 #endif
