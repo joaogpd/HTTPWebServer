@@ -7,7 +7,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include "args.h"
 
 typedef enum {
     IMAGE_JPEG = 0, 
@@ -64,14 +63,28 @@ extern char http_ok_response_pt2[];
 extern char http_ok_response_pt3[];
 extern char http_ok_response_pt4[];
 
+// Thread responsible for writing to log file, by consuming
+// from the log buffer.
 void* log_file_writer(void* log_filename);
+// Produces a message for the log buffer.
 void* log_message_producer(void* msg);
+// Frees up the memory used by the log buffer.
 void free_log_buffer(void);
+// Terminates the log_file_writer thread, assuring no resources
+// are leaked.
 void terminate_log_file_writer(void);
+
+// Produces a stats message for the stats buffer.
 void produce_stats_message(FileType type);
+// Writes the stats buffer to the stats file. Also frees up memory used
+// to prevent leaks.
 void show_stats(char *stats_filename);
+
+// Gets a path to a file from its name, passed in the HTTP request.
 char* get_file_path(char *request);
-struct file_response *get_file_content(char *path);
+// Gets the actual file's contents.
+struct file_response *get_file_content(char *path, char *root_path);
+// Gets file type from its extension.
 FileType get_file_type(char *extension);
 
 #endif

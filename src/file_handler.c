@@ -291,16 +291,16 @@ char* get_file_path(char *request) {
     return file_path;
 }
 
-struct file_response *get_file_content(char *path) {
+struct file_response *get_file_content(char *path, char *root_path) {
     // call stat to get file attributes
-    char *full_path = (char*)malloc(sizeof(char) * (strlen(path) + strlen(application_context->root_path) + 1));
+    char *full_path = (char*)malloc(sizeof(char) * (strlen(path) + strlen(root_path) + 1));
     if (full_path == NULL) {
         fprintf(stderr,"ERROR: couldn't allocate memory for full file path");
         return NULL;
     }
     
     strcpy(full_path, "");
-    strcat(full_path, application_context->root_path);
+    strcat(full_path, root_path);
     strcat(full_path, path);
 
     struct stat statbuf;

@@ -3,12 +3,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <signal.h>
-#include "args.h"
 #include "file_handler.h"
 #include "server.h"
-
-#define KEEP_FILE_DESCRIPTORS 1
-#define KEEP_WORKING_DIRECTORY 1
 
 int main(int argc, char *argv[]) {
     signal(SIGUSR1, terminate);
