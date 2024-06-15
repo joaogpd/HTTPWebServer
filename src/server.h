@@ -39,6 +39,7 @@ typedef struct client {
 extern int server_sockfd;
 
 // Global structure to contain values of command line arguments.
+extern pthread_mutex_t application_context_mutex;
 extern struct context *application_context; 
 
 // Linked list of connected clients.

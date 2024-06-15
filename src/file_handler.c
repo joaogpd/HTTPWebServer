@@ -1,4 +1,5 @@
 #include "file_handler.h"
+#include <pthread.h>
 
 pthread_mutex_t log_buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t new_log_data = PTHREAD_COND_INITIALIZER;
@@ -57,6 +58,7 @@ void* log_file_writer(void* log_filename) {
         while (message != NULL) {
             struct log_message *temp = message->next;
             
+            fprintf(log_file, "[Thread %ld] ", message->thread_id);
             fwrite(message->timestamped_message, sizeof(char), message->message_len, log_file);
             fwrite("\n", sizeof(char), 1, log_file);   
     
@@ -95,6 +97,7 @@ void* log_message_producer(void* msg) {
 
     pthread_mutex_lock(&log_buffer_mutex);
 
+    message->thread_id = pthread_self();
     message->next = log_buffer;
     log_buffer = message;
 

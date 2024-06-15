@@ -1,5 +1,7 @@
 #include "server.h"
 
+pthread_mutex_t timestamp_tm_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 void *client_thread(void *arg) {
     int client_sockfd = *((int*)arg);
     free(arg); // arg is heap allocated
@@ -39,17 +41,27 @@ void *client_thread(void *arg) {
             // Builds the response that will be sent to the log file.
 
             time_t timestamp = time(NULL);
-            struct tm *timestamp_tm = localtime(&timestamp);
+            pthread_mutex_lock(&timestamp_tm_mutex);
+            struct tm *timestamp_tm = (struct tm*)malloc(sizeof(struct tm));
+            if (timestamp_tm == NULL) {
+                fprintf(stderr, "ERROR: couldn't allocate memory for timestamp structure.\n");
+                pthread_mutex_unlock(&timestamp_tm_mutex);
+                continue;
+            }
+            localtime_r(&timestamp, timestamp_tm);
+            pthread_mutex_unlock(&timestamp_tm_mutex);
 
             char *timestamp_str = (char*)malloc(sizeof(char) * TIMESTAMP_MSG_SIZE);
             if (timestamp_str ==  NULL) {
                 fprintf(stderr, "ERROR: couldn't allocate memory for timestamp.\n");
+                free(timestamp_tm);
                 continue;
             }
 
             strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
             if (timestamp_str == NULL) {
                 free(timestamp_str);
+                free(timestamp_tm);
                 log_message_producer((void*)"[ERROR] Missing timestamp");
                 continue;
             }
@@ -57,6 +69,7 @@ void *client_thread(void *arg) {
             char* file_path = get_file_path(data);
             if (file_path == NULL) {
                 free(timestamp_str);
+                free(timestamp_tm);
                 log_message_producer((void*)"[ERROR] Malformed query");
                 continue;
             }
@@ -66,6 +79,7 @@ void *client_thread(void *arg) {
             if (message == NULL) {
                 free(timestamp_str);
                 free(file_path);
+                free(timestamp_tm);
                 fprintf(stderr, "ERROR: Couldn't allocate memory for message.\n");
                 continue;
             }
@@ -87,6 +101,9 @@ void *client_thread(void *arg) {
                 file_path = (char*)malloc(sizeof(char) * (strlen("/index.html") + 1));
                 if (file_path == NULL) {
                     fprintf(stderr,"ERROR: couldn't allocate memory for index.html file path.\n");
+
+                    free(timestamp_str);
+                    free(timestamp_tm);
                     continue;
                 }
                 
@@ -94,11 +111,15 @@ void *client_thread(void *arg) {
             }
 
             timestamp = time(NULL);
-            timestamp_tm = gmtime(&timestamp);
+            memset(timestamp_tm, 0, sizeof(struct tm));
+            gmtime_r(&timestamp, timestamp_tm);
 
             strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
             if (timestamp_str == NULL) {
                 free(timestamp_str);
+                free(timestamp_tm);
+                free(file_path);
+
                 log_message_producer((void*)"[ERROR] Missing timestamp");
                 continue;
             }
@@ -120,6 +141,7 @@ void *client_thread(void *arg) {
                     free(http_response_404);
                     free(file_path);
                     free(timestamp_str);
+                    free(timestamp_tm);
 
                     continue;
                 }
@@ -130,16 +152,26 @@ void *client_thread(void *arg) {
                     (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
                 if (message_404 == NULL) {
                     fprintf(stderr, "ERROR: couldn't allocate memory for 404 message. Error: %s\n", strerror(errno));
+
+                    free(file_path);
+                    free(timestamp_str);
+                    free(timestamp_tm);
+
                     continue;
                 }
 
                 timestamp = time(NULL);
-                timestamp_tm = localtime(&timestamp);
+                memset(timestamp_tm, 0, sizeof(struct tm));
+                localtime_r(&timestamp, timestamp_tm);
 
                 strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
                 if (timestamp_str == NULL) {
+                    free(file_path);
                     free(timestamp_str);
+                    free(timestamp_tm);
+
                     log_message_producer((void*)"[ERROR] Missing timestamp");
+
                     continue;
                 }
 
@@ -151,6 +183,7 @@ void *client_thread(void *arg) {
                 log_message_producer(message_404);
 
                 free(timestamp_str);
+                free(timestamp_tm);
                 free(file_path);
                 free(message_404);
 
@@ -163,7 +196,10 @@ void *client_thread(void *arg) {
 
             FileType type = get_file_type(file_extension);
 
+            pthread_mutex_lock(&application_context_mutex);
             struct file_response* file_response = get_file_content(file_path, application_context->root_path);
+            pthread_mutex_unlock(&application_context_mutex);
+
             if (file_response == NULL) {
                 size_t http_response_404_len = strlen(http_404_response_pt1) + strlen(http_404_response_pt2) + strlen(timestamp_str) + 1;
                 char* http_response_404 = (char*)malloc(sizeof(char) * http_response_404_len);
@@ -180,6 +216,7 @@ void *client_thread(void *arg) {
                     free(http_response_404);
                     free(file_path);
                     free(timestamp_str);
+                    free(timestamp_tm);
 
                     continue;
                 }
@@ -190,16 +227,26 @@ void *client_thread(void *arg) {
                     (strlen("[MESSAGE] 404 Not Found - ") + strlen(timestamp_str) + strlen(file_path) + strlen(" - ") + 1));
                 if (message_404 == NULL) {
                     fprintf(stderr, "ERROR: couldn't allocate memory for 404 message. Error: %s\n", strerror(errno));
+
+                    free(file_path);
+                    free(timestamp_str);
+                    free(timestamp_tm);
+
                     continue;
                 }
                 
                 timestamp = time(NULL);
-                timestamp_tm = localtime(&timestamp);
+                memset(timestamp_tm, 0, sizeof(struct tm));
+                localtime_r(&timestamp, timestamp_tm);
 
                 strftime(timestamp_str, TIMESTAMP_MSG_SIZE, "%a, %d %b %Y %H:%M:%S %Z", timestamp_tm);
                 if (timestamp_str == NULL) {
                     free(timestamp_str);
+                    free(file_path);
+                    free(timestamp_tm);
+
                     log_message_producer((void*)"[ERROR] Missing timestamp");
+
                     continue;
                 }
 
@@ -211,6 +258,7 @@ void *client_thread(void *arg) {
                 log_message_producer(message_404);
 
                 free(timestamp_str);
+                free(timestamp_tm);
                 free(file_path);
                 free(message_404);
 
@@ -237,6 +285,8 @@ void *client_thread(void *arg) {
                
                 free(file_response->file_content);
                 free(file_response);
+                free(timestamp_str);
+                free(timestamp_tm);
                 
                 return NULL;
             }
@@ -254,12 +304,21 @@ void *client_thread(void *arg) {
             memcpy(http_response + (http_response_len - file_response->file_size - 1),
                  file_response->file_content, file_response->file_size);
 
+            pthread_mutex_lock(&application_context_mutex);
             if (application_context->stats_filename != NULL) {
                 produce_stats_message(type);
             }
+            pthread_mutex_unlock(&application_context_mutex);
 
             if (send(client_sockfd, http_response, sizeof(char) * http_response_len, 0) != sizeof(char) * http_response_len) {
                 log_message_producer((void*)"[ERROR] Couldn't send all data");
+
+                free(http_response);
+                free(file_response->file_content);
+                free(file_response);
+                free(timestamp_str);
+                free(timestamp_tm);
+
                 continue;
             }
 
@@ -267,6 +326,7 @@ void *client_thread(void *arg) {
             free(file_response->file_content);
             free(file_response);
             free(timestamp_str);
+            free(timestamp_tm);
         }
 
         pthread_testcancel();

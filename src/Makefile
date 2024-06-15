@@ -1,5 +1,9 @@
 OBJECTS=main.o args.o clients.o file_handler.o server.o client_thread.o start_server.o
 EXEC=webserver.out
+CC-OBJ=gcc -Wall -c
+CC=gcc -Wall -o
+CC-OBJ-DBG=gcc -Wall -g -c
+CC-DBG=gcc -Wall -g -o
 
 # runs clean if there is an error
 all:
@@ -7,29 +11,29 @@ all:
 
 build: 
 	make object
-	gcc -Wall -o $(EXEC) $(OBJECTS) -pthread
+	$(CC-DBG) $(EXEC) $(OBJECTS) -pthread
 	make clean-object
 
 args: args.c
-	gcc -Wall -c args.o args.c
+	$(CC-OBJ-DBG) args.o args.c
 
 clients: clients.c
-	gcc -Wall -c clients.o clients.c -pthread
+	$(CC-OBJ-DBG) clients.o clients.c -pthread
 
 file_handler: file_handler.c
-	gcc -Wall -c file_handler.o file_handler.c -pthread
+	$(CC-OBJ-DBG) file_handler.o file_handler.c -pthread
 
 client_thread: client_thread.c
-	gcc -Wall -c client_thread.o client_thread.c -pthread
+	$(CC-OBJ-DBG) client_thread.o client_thread.c -pthread
 
 start_server: start_server.c
-	gcc -Wall -c start_server.o start_server.c -pthread
+	$(CC-OBJ-DBG) start_server.o start_server.c -pthread
 
 server: server.c
-	gcc -Wall -c server.o server.c -pthread
+	$(CC-OBJ-DBG) server.o server.c -pthread
 
 main: main.c
-	gcc -Wall -c main.o main.c -pthread
+	$(CC-OBJ-DBG) main.o main.c -pthread
 
 object: 
 	make args

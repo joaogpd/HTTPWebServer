@@ -30,6 +30,7 @@ typedef enum {
 typedef struct log_message {
     char *timestamped_message;
     size_t message_len;
+    pthread_t thread_id;
     struct log_message *next;
 } LogMessage;
 
