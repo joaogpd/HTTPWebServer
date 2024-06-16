@@ -11,29 +11,29 @@ all:
 
 build: 
 	make object
-	$(CC-DBG) $(EXEC) $(OBJECTS) -pthread
+	$(CC) $(EXEC) $(OBJECTS) -pthread
 	make clean-object
 
 args: args.c
-	$(CC-OBJ-DBG) args.o args.c
+	$(CC-OBJ) args.o args.c
 
 clients: clients.c
-	$(CC-OBJ-DBG) clients.o clients.c -pthread
+	$(CC-OBJ) clients.o clients.c -pthread
 
 file_handler: file_handler.c
-	$(CC-OBJ-DBG) file_handler.o file_handler.c -pthread
+	$(CC-OBJ) file_handler.o file_handler.c -pthread
 
 client_thread: client_thread.c
-	$(CC-OBJ-DBG) client_thread.o client_thread.c -pthread
+	$(CC-OBJ) client_thread.o client_thread.c -pthread
 
 start_server: start_server.c
-	$(CC-OBJ-DBG) start_server.o start_server.c -pthread
+	$(CC-OBJ) start_server.o start_server.c -pthread
 
 server: server.c
-	$(CC-OBJ-DBG) server.o server.c -pthread
+	$(CC-OBJ) server.o server.c -pthread
 
 main: main.c
-	$(CC-OBJ-DBG) main.o main.c -pthread
+	$(CC-OBJ) main.o main.c -pthread
 
 object: 
 	make args
