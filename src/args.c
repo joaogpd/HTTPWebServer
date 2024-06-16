@@ -1,11 +1,11 @@
 #include "server.h"
 #include <pthread.h>
 
-pthread_mutex_t application_context_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t application_context_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct context *application_context = NULL; 
 
 void free_application_context(void) {
-    pthread_mutex_lock(&application_context_mutex);
+    // pthread_mutex_lock(&application_context_mutex);
 
     if (application_context != NULL) {
         free(application_context->port);
@@ -18,7 +18,7 @@ void free_application_context(void) {
     
     application_context = NULL;
     
-    pthread_mutex_unlock(&application_context_mutex);
+    // pthread_mutex_unlock(&application_context_mutex);
 }
 
 /**
@@ -35,8 +35,6 @@ int parse_args(int argc, char *argv[]) {
         {"background", no_argument, NULL, 'b'},
         {"root", required_argument, NULL, 'r'}
     };
-
-    pthread_mutex_lock(&application_context_mutex);
     
     application_context = (struct context*)malloc(sizeof(struct context));
     if (application_context == NULL) {
@@ -76,16 +74,12 @@ int parse_args(int argc, char *argv[]) {
                 fprintf(stderr, "FATAL ERROR: unknown or missing argument value.\n"); 
                 SHOW_PROPER_USAGE(argv[0]);
 
-                pthread_mutex_unlock(&application_context_mutex);
-
                 free_application_context();
 
                 return -1;
             default:
                 fprintf(stderr, "FATAL ERROR: unknown or missing argument value.\n");
                 SHOW_PROPER_USAGE(argv[0]);
-
-                pthread_mutex_unlock(&application_context_mutex);
 
                 free_application_context();
 
@@ -96,7 +90,6 @@ int parse_args(int argc, char *argv[]) {
     if (application_context->port == NULL) {
         fprintf(stderr, "FATAL ERROR: port argument is mandatory.\n");
         SHOW_PROPER_USAGE(argv[0]);
-        pthread_mutex_unlock(&application_context_mutex);
         free_application_context();
         return -1;
     }
@@ -104,12 +97,9 @@ int parse_args(int argc, char *argv[]) {
     if (application_context->root_path == NULL) {
         fprintf(stderr, "FATAL ERROR: path argument is mandatory.\n");
         SHOW_PROPER_USAGE(argv[0]);
-        pthread_mutex_unlock(&application_context_mutex);
         free_application_context();
         return -1;
     }
-
-    pthread_mutex_unlock(&application_context_mutex);
 
     return 0;
 }

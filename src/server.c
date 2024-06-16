@@ -24,13 +24,11 @@ void terminate(int sig) {
         }
     }
 
-    pthread_mutex_lock(&application_context_mutex);
     if (application_context != NULL) {
         if (application_context->stats_filename != NULL) {
             show_stats(application_context->stats_filename);
         }   
     }
-    pthread_mutex_unlock(&application_context_mutex);
 
     free_application_context();
 

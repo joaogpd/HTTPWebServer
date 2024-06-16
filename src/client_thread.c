@@ -196,9 +196,7 @@ void *client_thread(void *arg) {
 
             FileType type = get_file_type(file_extension);
 
-            pthread_mutex_lock(&application_context_mutex);
             struct file_response* file_response = get_file_content(file_path, application_context->root_path);
-            pthread_mutex_unlock(&application_context_mutex);
 
             if (file_response == NULL) {
                 size_t http_response_404_len = strlen(http_404_response_pt1) + strlen(http_404_response_pt2) + strlen(timestamp_str) + 1;
@@ -304,11 +302,9 @@ void *client_thread(void *arg) {
             memcpy(http_response + (http_response_len - file_response->file_size - 1),
                  file_response->file_content, file_response->file_size);
 
-            pthread_mutex_lock(&application_context_mutex);
             if (application_context->stats_filename != NULL) {
                 produce_stats_message(type);
             }
-            pthread_mutex_unlock(&application_context_mutex);
 
             if (send(client_sockfd, http_response, sizeof(char) * http_response_len, 0) != sizeof(char) * http_response_len) {
                 log_message_producer((void*)"[ERROR] Couldn't send all data");

@@ -3,7 +3,6 @@
 pthread_mutex_t connected_clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct client *connected_clients = NULL;
 
-
 void remove_client(int sockfd) {
     pthread_mutex_lock(&connected_clients_mutex);
 
