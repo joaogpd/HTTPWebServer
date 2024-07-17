@@ -12,7 +12,6 @@ all:
 build: 
 	make object
 	$(CC) $(EXEC) $(OBJECTS) -pthread
-	make clean-object
 
 args: args.c
 	$(CC-OBJ) args.o args.c
